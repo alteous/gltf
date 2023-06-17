@@ -25,11 +25,20 @@ pub struct Node {
 
     #[cfg(feature = "KITTYCAD_boundary_representation")]
     #[serde(
-	default,
-	rename = "KITTYCAD_boundary_representation",
-	skip_serializing_if = "Option::is_none"
+        default,
+        rename = "KITTYCAD_boundary_representation",
+        skip_serializing_if = "Option::is_none"
     )]
-    pub kittycad_boundary_representation: Option<kittycad_boundary_representation::KittyCadBoundaryRepresentation>,
+    pub kittycad_boundary_representation:
+        Option<kittycad_boundary_representation::KittyCadBoundaryRepresentation>,
+
+    #[cfg(feature = "KITTYCAD_uuid")]
+    #[serde(
+        default,
+        rename = "KITTYCAD_uuid",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub kittycad_uuid: Option<crate::extensions::kittycad_uuid::Uuid>,
 
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]

@@ -20,6 +20,10 @@ pub mod image;
 #[cfg(feature = "KITTYCAD_boundary_representation")]
 pub mod kittycad_boundary_representation;
 
+/// Contains `Uuid`.
+#[cfg(feature = "KITTYCAD_uuid")]
+pub mod kittycad_uuid;
+
 /// Contains `Material` and other related data structures.
 pub mod material;
 
@@ -58,6 +62,8 @@ pub const ENABLED_EXTENSIONS: &[&str] = &[
     "KHR_materials_emissive_strength",
     #[cfg(feature = "KITTYCAD_boundary_representation")]
     "KITTYCAD_boundary_representation",
+    #[cfg(feature = "KITTYCAD_uuid")]
+    "KITTYCAD_uuid",
 ];
 
 /// Names of glTF 2.0 extensions supported by the library.
@@ -66,7 +72,9 @@ pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "KHR_materials_pbrSpecularGlossiness",
     "KHR_materials_unlit",
     "KHR_texture_transform",
+    "KHR_materials_emissive_strength",
     "KHR_materials_transmission",
     "KHR_materials_ior",
-    "KHR_materials_emissive_strength",
+    "KITTYCAD_boundary_representation",
+    "KITTYCAD_uuid",
 ];

@@ -9,6 +9,15 @@ use serde_json::{Map, Value};
 /// the scene.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Mesh {
+    /// Universally unique identifier.
+    #[cfg(feature = "KITTYCAD_uuid")]
+    #[serde(
+        default,
+        rename = "KITTYCAD_uuid",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub kittycad_uuid: Option<crate::extensions::kittycad_uuid::Uuid>,
+
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
