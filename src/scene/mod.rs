@@ -1,6 +1,9 @@
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 
+#[cfg(feature = "KITTYCAD_boundary_representation")]
+use crate::kittycad_boundary_representation::BRep;
+
 use crate::math::*;
 use crate::{Camera, Document, Mesh, Skin};
 
@@ -127,6 +130,22 @@ impl<'a> Node<'a> {
     /// Returns the internal JSON index.
     pub fn index(&self) -> usize {
         self.index
+    }
+
+    /// Returns the B-rep referenced by this node.
+    #[cfg(feature = "KITTYCAD_boundary_representation")]
+    pub fn brep(&self) -> Option<BRep<'a>> {
+        self.json
+            .extensions
+            .as_ref()
+            .and_then(|ext| ext.kittycad_boundary_representation.as_ref())
+            .map(|ext| {
+                self.document
+                    .breps()
+                    .unwrap()
+                    .nth(ext.brep.value())
+                    .unwrap()
+            })
     }
 
     /// Returns the camera referenced by this node.
