@@ -180,7 +180,7 @@ pub use self::import::import_images;
 pub use self::import::import_slice;
 #[cfg(feature = "KITTYCAD_boundary_representation")]
 #[doc(inline)]
-pub use self::kittycad_boundary_representation::{BRep, Curve, Edge, EdgeVertex, Surface};
+pub use self::kittycad_boundary_representation::{Curve, Edge, EdgeVertex, Shell, Solid, Surface};
 #[doc(inline)]
 pub use self::material::Material;
 #[doc(inline)]
@@ -420,22 +420,19 @@ impl Document {
         }
     }
 
-    /// Returns an `Iterator` that visits the B-reps of the glTF asset.
+    /// Returns an `Iterator` that visits the solid boundary representations of the glTF asset.
     #[cfg(feature = "KITTYCAD_boundary_representation")]
-    pub fn breps(&self) -> Option<iter::BReps> {
+    pub fn solids(&self) -> Option<impl Iterator<Item = Solid>> {
         let iter = self
             .0
             .extensions
             .as_ref()?
             .kittycad_boundary_representation
             .as_ref()?
-            .breps
+            .solids
             .iter()
             .enumerate();
-        Some(iter::BReps {
-            iter,
-            document: self,
-        })
+        Some(iter.map(|(index, json)| Solid::new(self, index, json)))
     }
 
     /// Returns an `Iterator` that visits the B-rep curves of the glTF asset.

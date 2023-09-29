@@ -54,8 +54,8 @@ pub mod kittycad_boundary_representation {
     /// Reference to boundary representation solid.
     #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
     pub struct KittyCadBoundaryRepresentation {
-	    /// Index into top level brep array.
-	    pub brep: Index<crate::extensions::kittycad_boundary_representation::BRep>,
+        /// Index into top level solid array.
+        pub solid: Index<crate::extensions::kittycad_boundary_representation::Solid>,
     }
 }
 

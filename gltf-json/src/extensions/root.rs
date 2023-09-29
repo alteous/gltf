@@ -86,7 +86,7 @@ impl crate::root::Get<crate::extensions::scene::khr_materials_variants::Variant>
 #[serde(rename_all = "camelCase")]
 pub struct KittyCadBoundaryRepresentation {
     /// Solid boundary representation instances.
-    pub breps: Vec<crate::extensions::kittycad_boundary_representation::BRep>,
+    pub solids: Vec<crate::extensions::kittycad_boundary_representation::Solid>,
     /// Abstract curve definitions.
     pub curves: Vec<crate::extensions::kittycad_boundary_representation::Curve>,
     /// Abstract surface definitions.
@@ -98,16 +98,16 @@ pub struct KittyCadBoundaryRepresentation {
 }
 
 #[cfg(feature = "KITTYCAD_boundary_representation")]
-impl crate::root::Get<crate::extensions::kittycad_boundary_representation::BRep> for crate::Root {
+impl crate::root::Get<crate::extensions::kittycad_boundary_representation::Solid> for crate::Root {
     fn get(
         &self,
-        id: crate::Index<crate::extensions::kittycad_boundary_representation::BRep>,
-    ) -> Option<&crate::extensions::kittycad_boundary_representation::BRep> {
+        id: crate::Index<crate::extensions::kittycad_boundary_representation::Solid>,
+    ) -> Option<&crate::extensions::kittycad_boundary_representation::Solid> {
         self.extensions
             .as_ref()?
             .kittycad_boundary_representation
             .as_ref()?
-            .breps
+            .solids
             .get(id.value())
     }
 }
