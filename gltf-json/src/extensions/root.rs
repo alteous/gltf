@@ -1,4 +1,5 @@
 use gltf_derive::Validate;
+use schemars::JsonSchema;
 use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
@@ -84,7 +85,7 @@ impl crate::root::Get<crate::extensions::scene::khr_materials_variants::Variant>
 }
 
 #[cfg(feature = "KITTYCAD_boundary_representation")]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct KittyCadBoundaryRepresentation {
     /// Solid boundary representation instances.
