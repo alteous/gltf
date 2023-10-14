@@ -1,6 +1,6 @@
 #[cfg(any(feature = "KHR_texture_transform", feature = "EXT_texture_webp"))]
 use crate::{extras::Extras, validation::Validate};
-#[cfg(feature = "EXT_texture_webp")]
+#[cfg(any(feature = "EXT_texture_webp", feature = "KHR_texture_basisu"))]
 use crate::{image, Index};
 
 use gltf_derive::Validate;
@@ -19,9 +19,13 @@ pub struct Sampler {
 /// A texture and its sampler.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Texture {
-    #[cfg(feature = "extensions")]
-    #[serde(default, flatten)]
-    pub others: Map<String, Value>,
+    #[cfg(feature = "KHR_texture_basisu")]
+    #[serde(
+        default,
+        rename = "KHR_texture_basisu",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub texture_basisu: Option<TextureBasisu>,
 
     #[cfg(feature = "EXT_texture_webp")]
     #[serde(
@@ -30,12 +34,23 @@ pub struct Texture {
         skip_serializing_if = "Option::is_none"
     )]
     pub texture_webp: Option<TextureWebp>,
+
+    #[cfg(feature = "extensions")]
+    #[serde(default, flatten)]
+    pub others: Map<String, Value>,
 }
 
 #[cfg(feature = "EXT_texture_webp")]
 #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
 pub struct TextureWebp {
     /// The index of the webp image used by the texture.
+    pub source: Index<image::Image>,
+}
+
+#[cfg(feature = "KHR_texture_basisu")]
+#[derive(Clone, Debug, Deserialize, Serialize, Validate)]
+pub struct TextureBasisu {
+    /// The index of the image used by this texture.
     pub source: Index<image::Image>,
 }
 

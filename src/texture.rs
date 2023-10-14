@@ -177,6 +177,36 @@ impl<'a> Texture<'a> {
             .unwrap()
     }
 
+    /// Returns the fallback image used by this texture.
+    pub fn source_fallback(&self) -> Option<image::Image<'a>> {
+        let index = self.json.source.value();
+        if index == u32::MAX as usize {
+            None
+        } else {
+            Some(self.document.images().nth(index).unwrap())
+        }
+    }
+
+    /// Returns the basisu image used by this texture.
+    #[cfg(feature = "KHR_texture_basisu")]
+    pub fn source_basisu(&self) -> Option<image::Image<'a>> {
+        self.json
+            .extensions
+            .as_ref()
+            .and_then(|extensions| extensions.texture_basisu.as_ref())
+            .and_then(|texture| self.document.images().nth(texture.source.value()))
+    }
+
+    /// Returns the webp image used by this texture.
+    #[cfg(feature = "EXT_texture_webp")]
+    pub fn source_webp(&self) -> Option<image::Image<'a>> {
+        self.json
+            .extensions
+            .as_ref()
+            .and_then(|extensions| extensions.texture_webp.as_ref())
+            .and_then(|texture| self.document.images().nth(texture.source.value()))
+    }
+
     /// Returns extension data unknown to this crate version.
     #[cfg(feature = "extensions")]
     #[cfg_attr(docsrs, doc(cfg(feature = "extensions")))]
