@@ -1,7 +1,7 @@
 //! Boundary representations of solid objects
 
 use crate::validation::{Error, Validate};
-use crate::{Index, Path, Root};
+use crate::{Index, Root};
 use gltf_derive::Validate;
 use schemars::gen::SchemaGenerator;
 use schemars::schema::Schema;
@@ -12,7 +12,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 /// 2D and 3D curve definitions.
 pub mod curve {
     use crate::validation::{Checked, Error, Validate};
-    use crate::{Path, Root};
+    use crate::Root;
     use gltf_derive::Validate;
     use schemars::JsonSchema;
     use serde::{de, ser};
@@ -98,12 +98,15 @@ pub mod curve {
         /// Position at the center of the circle.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub origin: Option<[f64; 3]>,
+
         /// Distance from the center position to all points on the circle.
         pub radius: f64,
+
         /// Unit vector normal to the plane containing the circle.
         ///
         /// This serves as the Z basis in the parametric co-ordinate space.
         pub normal: [f64; 3],
+
         /// Unit vector in the direction from the origin to the point on
         /// the circle evaluated at λ(0).
         ///
@@ -123,6 +126,7 @@ pub mod curve {
         /// Origin position.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub origin: Option<[f64; 3]>,
+
         /// Unit vector pointing away from the origin position.
         pub direction: [f64; 3],
     }
@@ -138,24 +142,6 @@ pub mod curve {
         pub knot_vector: Vec<f64>,
         /// Order of basis splines.
         pub order: u32,
-    }
-
-    /// Curve parameter domain.
-    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
-    #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve.domain")]
-    pub struct Domain {
-        /// Minimum domain value.
-        pub min: f64,
-
-        /// Maximum domain value.
-        pub max: f64,
-    }
-
-    impl Default for Domain {
-        fn default() -> Self {
-            Self { min: 0.0, max: 1.0 }
-        }
     }
 
     /// Specific curve data.
@@ -174,8 +160,8 @@ pub mod curve {
     impl Validate for Geometry {
         fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
         where
-            P: Fn() -> Path,
-            R: FnMut(&dyn Fn() -> Path, Error),
+            P: Fn() -> crate::Path,
+            R: FnMut(&dyn Fn() -> crate::Path, Error),
         {
             match self {
                 Self::Circle(circle) => circle.validate(root, || path().field("circle"), report),
@@ -202,17 +188,13 @@ pub mod curve {
         /// Specific curve data.
         #[serde(flatten)]
         pub geometry: Geometry,
-
-        /// Parameter domain.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub domain: Option<Domain>,
     }
 }
 
 /// 3D surface definitions.
 pub mod surface {
     use crate::validation::{Checked, Error, Validate};
-    use crate::{Path, Root};
+    use crate::Root;
     use gltf_derive::Validate;
     use schemars::JsonSchema;
     use serde::{de, ser};
@@ -220,27 +202,6 @@ pub mod surface {
     use std::fmt;
 
     pub const VALID_SURFACE_TYPES: &[&str] = &["cylinder", "nurbs", "plane", "sphere", "torus"];
-
-    /// Domain of surface parameters.
-    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
-    #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "surface.domain")]
-    pub struct Domain {
-        /// Minimum domain values.
-        pub min: [f64; 2],
-
-        /// Maximum domain values.
-        pub max: [f64; 2],
-    }
-
-    impl Default for Domain {
-        fn default() -> Self {
-            Self {
-                min: [0.0, 0.0],
-                max: [1.0, 1.0],
-            }
-        }
-    }
 
     /// Discriminant for `Surface` data.
     #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Eq, PartialEq)]
@@ -354,8 +315,8 @@ pub mod surface {
     impl Validate for Nurbs {
         fn validate<P, R>(&self, _root: &Root, path: P, report: &mut R)
         where
-            P: Fn() -> Path,
-            R: FnMut(&dyn Fn() -> Path, Error),
+            P: Fn() -> crate::Path,
+            R: FnMut(&dyn Fn() -> crate::Path, Error),
         {
             let expected_control_points = self.num_control_points[0] * self.num_control_points[1];
             if expected_control_points as usize != self.control_points.len() {
@@ -449,8 +410,8 @@ pub mod surface {
     impl Validate for Geometry {
         fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
         where
-            P: Fn() -> Path,
-            R: FnMut(&dyn Fn() -> Path, Error),
+            P: Fn() -> crate::Path,
+            R: FnMut(&dyn Fn() -> crate::Path, Error),
         {
             match self {
                 Self::Cylinder(cylinder) => {
@@ -479,13 +440,10 @@ pub mod surface {
         /// Specific surface data.
         #[serde(flatten)]
         pub geometry: Geometry,
-        /// Surface parameter domain.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub domain: Option<Domain>,
     }
 }
 
-/// Pair of vertices on a face plus an optional trim domain.
+/// Pair of vertices on a face with an accompanying 3D curve..
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "edge")]
@@ -502,12 +460,8 @@ pub struct Edge {
     /// Marker for a closed edge.
     pub closed: bool,
 
-    /// Optional domain to select a subset of the edge curve geometry.
-    ///
-    /// When `None`, the domain is the same as the edge curve geometry
-    /// domain.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub subdomain: Option<curve::Domain>,
+    /// Interval for the curve's 't' parameter.
+    pub t: Interval,
 }
 
 /// Junctions of edges in 3D space.
@@ -519,8 +473,8 @@ pub struct Vertex(pub [f64; 3]);
 impl Validate for Vertex {
     fn validate<P, R>(&self, _root: &Root, _path: P, _report: &mut R)
     where
-        P: Fn() -> Path,
-        R: FnMut(&dyn Fn() -> Path, Error),
+        P: Fn() -> crate::Path,
+        R: FnMut(&dyn Fn() -> crate::Path, Error),
     {
     }
 }
@@ -626,11 +580,53 @@ where
 {
     fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
     where
-        P: Fn() -> Path,
-        R: FnMut(&dyn Fn() -> Path, Error),
+        P: Fn() -> crate::Path,
+        R: FnMut(&dyn Fn() -> crate::Path, Error),
     {
         self.0.validate(root, path, report);
     }
+}
+
+/// A pair of endpoint arguments for a single parameter.
+///
+/// The interval is closed at both ends.
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[schemars(rename = "interval")]
+pub struct Interval(pub f64, pub f64);
+
+impl Interval {
+    /// The minimum value.
+    pub fn min(&self) -> f64 {
+        self.0
+    }
+
+    /// The maximum value.
+    pub fn max(&self) -> f64 {
+        self.1
+    }
+}
+
+impl Validate for Interval {
+    fn validate<P, R>(&self, _root: &Root, _path: P, _report: &mut R)
+    where
+        P: Fn() -> crate::Path,
+        R: FnMut(&dyn Fn() -> crate::Path, Error),
+    {
+    }
+}
+
+/// Curve in 2D surface space.
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+pub struct Trace {
+    /// The edge curve geometry in 2D (or homogeneous 3D) space.
+    pub curve: IndexWithOrientation<Curve>,
+
+    /// Marker for a closed path.
+    pub closed: bool,
+
+    /// Interval for the curve 't' parameter.
+    pub t: Interval,
 }
 
 /// Edge loop.
@@ -641,9 +637,9 @@ pub struct Loop {
     /// Oriented edges forming the loop.
     pub edges: Vec<IndexWithOrientation<Edge>>,
 
-    /// Optional 1:1 pairing of UV curves to edges.
+    /// Optional 1:1 pairing of traces to edges.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub uv_curves: Vec<IndexWithOrientation<Curve>>,
+    pub traces: Vec<Trace>,
 }
 
 /// Set of loops defined on an abstract surface.

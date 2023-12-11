@@ -2,7 +2,7 @@ use crate::{Document, Mesh};
 use json::extensions::kittycad_boundary_representation as kcad;
 
 #[doc(inline)]
-pub use kcad::Orientation;
+pub use kcad::{Interval, Orientation};
 
 #[doc(inline)]
 pub use curve::Curve;
@@ -14,9 +14,6 @@ pub use surface::Surface;
 pub mod curve {
     use euler::{DVec3, DVec4};
     use json::extensions::kittycad_boundary_representation as kcad;
-
-    #[doc(inline)]
-    pub use kcad::curve::Domain;
 
     /// Circular curve definition.
     ///
@@ -32,9 +29,6 @@ pub mod curve {
     pub struct Circle<'a> {
         /// The corresponding JSON struct.
         pub(crate) json: &'a kcad::curve::Circle,
-
-        /// The curve domain.
-        pub(crate) domain: Option<Domain>,
     }
 
     impl<'a> Circle<'a> {
@@ -75,24 +69,6 @@ pub mod curve {
             let (sine, cosine) = t.sin_cos();
             (origin + (xbasis * cosine + ybasis * sine) * radius).into()
         }
-
-        /// Point evaluated at the domain minimum value.
-        pub fn start(&self) -> [f64; 3] {
-            if let Some(Domain { min, .. }) = self.domain {
-                self.evaluate(min)
-            } else {
-                self.evaluate(0.0)
-            }
-        }
-
-        /// Point evaluated at the domain maximum value.
-        pub fn end(&self) -> [f64; 3] {
-            if let Some(Domain { max, .. }) = self.domain {
-                self.evaluate(max)
-            } else {
-                self.start()
-            }
-        }
     }
 
     /// Defines a line curve.
@@ -100,30 +76,19 @@ pub mod curve {
     pub struct Line<'a> {
         /// The corresponding JSON struct.
         pub(crate) json: &'a kcad::curve::Line,
-
-        /// The curve domain.
-        pub(crate) domain: Domain,
     }
 
     impl<'a> Line<'a> {
-        /// Returns the line origin.
-        pub fn start(&self) -> [f64; 3] {
+        /// Returns the line origin point.
+        pub fn origin(&self) -> [f64; 3] {
             self.json.origin.unwrap_or_default()
         }
 
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
-            let start = DVec3::from(self.start());
-            let end = DVec3::from(self.end());
-            (start + t * (end - start)).into()
-        }
-
-        /// Returns the line end point.
-        pub fn end(&self) -> [f64; 3] {
-            let start = DVec3::from(self.start());
-            let direction = DVec3::from(self.json.direction);
-            let end = start + direction * (self.domain.max - self.domain.min);
-            end.into()
+            let origin = DVec3::from(self.origin());
+            let direction = DVec3::from(self.direction());
+            (origin + t * direction).into()
         }
 
         /// Returns the line direction.
@@ -202,14 +167,14 @@ pub mod curve {
         }
 
         /// Returns the curve start point, i.e., the first control point.
-        pub fn start(&self) -> [f64; 3] {
+        fn start(&self) -> [f64; 3] {
             // TODO: evaluate for domain.
             let v = self.json.control_points[0];
             [v[0], v[1], v[2]]
         }
 
         /// Returns the curve end point, i.e., the last control point.
-        pub fn end(&self) -> [f64; 3] {
+        fn end(&self) -> [f64; 3] {
             // TODO: evaluate for domain.
             let v = self.json.control_points[self.json.control_points.len() - 1];
             [v[0], v[1], v[2]]
@@ -273,24 +238,6 @@ pub mod curve {
             self.json.name.as_deref()
         }
 
-        /// Evaluates the curve start point.
-        pub fn start(&self) -> [f64; 3] {
-            match self.geometry() {
-                Geometry::Circle(circle) => circle.start(),
-                Geometry::Line(line) => line.start(),
-                Geometry::Nurbs(nurbs) => nurbs.start(),
-            }
-        }
-
-        /// Evaluates the curve end point.
-        pub fn end(&self) -> [f64; 3] {
-            match self.geometry() {
-                Geometry::Circle(circle) => circle.end(),
-                Geometry::Line(line) => line.end(),
-                Geometry::Nurbs(nurbs) => nurbs.end(),
-            }
-        }
-
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
             match self.geometry() {
@@ -300,26 +247,13 @@ pub mod curve {
             }
         }
 
-        /// Returns the specific curve parameters.
+        /// Returns the specific underlying curve geometry.
         pub fn geometry(&self) -> Geometry<'a> {
             match self.json.geometry {
-                kcad::curve::Geometry::Circle(ref json) => Geometry::Circle(Circle {
-                    json,
-                    domain: self.domain(),
-                }),
-                kcad::curve::Geometry::Line(ref json) => Geometry::Line(Line {
-                    json,
-                    domain: self.domain().unwrap_or(Domain { min: 0.0, max: 1.0 }),
-                }),
+                kcad::curve::Geometry::Circle(ref json) => Geometry::Circle(Circle { json }),
+                kcad::curve::Geometry::Line(ref json) => Geometry::Line(Line { json }),
                 kcad::curve::Geometry::Nurbs(ref json) => Geometry::Nurbs(Nurbs { json }),
             }
-        }
-
-        /// Returns the range of the curve evaluation parameter.
-        ///
-        /// When the domain is `None`, assume 0 <= t <= 1.
-        pub fn domain(&self) -> Option<Domain> {
-            self.json.domain.clone()
         }
     }
 
@@ -418,7 +352,6 @@ pub mod curve {
                     normal: [0.0, 0.0, 1.0],
                     xbasis: [1.0, 0.0, 0.0],
                 },
-                domain: None,
             };
 
             let test_points = [
@@ -447,7 +380,6 @@ pub mod curve {
                     normal: [0.0, 0.0, 1.0],
                     xbasis: [1.0, 0.0, 0.0],
                 },
-                domain: None,
             };
 
             let test_points = [
@@ -474,9 +406,6 @@ pub mod surface {
     use euler::DVec3;
     use json::extensions::kittycad_boundary_representation as kcad;
 
-    #[doc(inline)]
-    pub use kcad::surface::Domain;
-
     /// Parametric cylindrical surface definition.
     ///
     /// σ(u, v) := O + R(cos(u)x + sin(u)y) + vz, where:
@@ -502,7 +431,6 @@ pub mod surface {
         pub fn circle(&self) -> super::curve::Circle<'a> {
             super::curve::Circle {
                 json: &self.json.circle,
-                domain: None,
             }
         }
 
@@ -554,7 +482,6 @@ pub mod surface {
         pub fn horizon(&self) -> super::curve::Circle<'a> {
             super::curve::Circle {
                 json: &self.json.horizon,
-                domain: None,
             }
         }
 
@@ -616,7 +543,6 @@ pub mod surface {
         pub fn circle(&self) -> super::curve::Circle<'a> {
             super::curve::Circle {
                 json: &self.json.circle,
-                domain: None,
             }
         }
 
@@ -630,7 +556,6 @@ pub mod surface {
     #[derive(Clone, Debug)]
     pub struct Nurbs<'a> {
         /// The corresponding JSON struct.
-        #[allow(dead_code)]
         pub(crate) json: &'a kcad::surface::Nurbs,
     }
 
@@ -705,7 +630,7 @@ pub mod surface {
             self.json.name.as_deref()
         }
 
-        /// Returns the specific surface geometry.
+        /// Returns the specific underlying surface geometry.
         pub fn geometry(&self) -> Geometry<'a> {
             match self.json.geometry {
                 kcad::surface::Geometry::Cylinder(ref json) => {
@@ -716,13 +641,6 @@ pub mod surface {
                 kcad::surface::Geometry::Sphere(ref json) => Geometry::Sphere(Sphere { json }),
                 kcad::surface::Geometry::Torus(ref json) => Geometry::Torus(Torus { json }),
             }
-        }
-
-        /// Returns the range of the surface evaluation parameters.
-        ///
-        /// When the domain is `None`, assume 0 <= u <= 1 and 0 <= v <= 1.
-        pub fn domain(&self) -> Option<Domain> {
-            self.json.domain.clone()
         }
     }
 
@@ -947,7 +865,7 @@ impl<'a> Loop<'a> {
         self.index
     }
 
-    /// Returns an iterator that visits the edges of the loop.
+    /// Returns an iterator that visits the 3D edges of the loop.
     pub fn edges(&self) -> impl ExactSizeIterator<Item = (Edge<'a>, Orientation)> {
         self.json
             .edges
@@ -958,15 +876,12 @@ impl<'a> Loop<'a> {
             })
     }
 
-    /// Returns an iterator that visits the UV curves of the loop.
-    pub fn uv_curves(&self) -> impl ExactSizeIterator<Item = (Curve<'a>, Orientation)> {
+    /// Returns an iterator that visits the corresponding 2D traces of the loop.
+    pub fn traces(&self) -> impl ExactSizeIterator<Item = Trace<'a>> {
         self.json
-            .uv_curves
+            .traces
             .iter()
-            .map(|kcad::IndexWithOrientation(index, orientation)| {
-                let curve = self.document.curves().unwrap().nth(index.value()).unwrap();
-                (curve, *orientation)
-            })
+            .map(|json| Trace::new(self.document, json))
     }
 }
 
@@ -1123,10 +1038,37 @@ impl<'a> Edge<'a> {
         }
     }
 
-    /// Returns the optional subdomain that selects a subset of the curve.
-    ///
-    /// If this is `None` the the edge spans the whole domain of the curve.
-    pub fn subdomain(&self) -> Option<curve::Domain> {
-        self.json.subdomain.clone()
+    /// Returns the interval for the edge curve parameter 't'.
+    pub fn t(&self) -> Interval {
+        self.json.t.clone()
+    }
+}
+
+/// A 2D curve across a surface.
+#[derive(Clone, Debug)]
+pub struct Trace<'a> {
+    /// The parent `Document` struct.
+    document: &'a Document,
+
+    /// The corresponding JSON struct.
+    json: &'a kcad::Trace,
+}
+
+impl<'a> Trace<'a> {
+    /// Constructs a `Trace`.
+    pub(crate) fn new(document: &'a Document, json: &'a kcad::Trace) -> Self {
+        Self { document, json }
+    }
+
+    /// Returns the edge curve geometry in 3D (or homogeneous 4D) space.
+    pub fn curve(&self) -> (Curve<'a>, Orientation) {
+        let kcad::IndexWithOrientation(index, orientation) = self.json.curve;
+        let curve = self.document.curves().unwrap().nth(index.value()).unwrap();
+        (curve, orientation)
+    }
+
+    /// Returns the interval for the trace curve parameter 't'.
+    pub fn t(&self) -> Interval {
+        self.json.t.clone()
     }
 }
