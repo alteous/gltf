@@ -157,6 +157,17 @@ pub mod curve {
         Nurbs(Nurbs),
     }
 
+    impl Geometry {
+        /// Returns the corresponding type for the geometry variant.
+        pub fn type_(&self) -> Type {
+            match self {
+                Self::Circle(_) => Type::Circle,
+                Self::Line(_) => Type::Line,
+                Self::Nurbs(_) => Type::Nurbs,
+            }
+        }
+    }
+
     impl Validate for Geometry {
         fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
         where
@@ -407,6 +418,19 @@ pub mod surface {
         Torus(Torus),
     }
 
+    impl Geometry {
+        /// Returns the corresponding type for the geometry variant.
+        pub fn type_(&self) -> Type {
+            match self {
+                Self::Cylinder(_) => Type::Cylinder,
+                Self::Nurbs(_) => Type::Nurbs,
+                Self::Plane(_) => Type::Plane,
+                Self::Sphere(_) => Type::Sphere,
+                Self::Torus(_) => Type::Torus,
+            }
+        }
+    }
+
     impl Validate for Geometry {
         fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
         where
@@ -596,6 +620,16 @@ where
 pub struct Interval(pub f64, pub f64);
 
 impl Interval {
+    /// [0.0, 1.0]
+    pub fn unit() -> Self {
+        Self(0.0, 1.0)
+    }
+
+    /// [0.0, 2π]
+    pub fn turn() -> Self {
+        Self(0.0, std::f64::consts::TAU)
+    }
+
     /// The minimum value.
     pub fn min(&self) -> f64 {
         self.0
