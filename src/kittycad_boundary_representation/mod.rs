@@ -10,6 +10,65 @@ pub use curve::Curve;
 #[doc(inline)]
 pub use surface::Surface;
 
+/// Iterates over `n` equally spaced steps between the interval endpoints,
+/// beginning and ending with the endpoints themselves.
+///
+/// ```
+/// # use IntervalExt;
+/// let interval = Interval(0.0, 4.0);
+/// let mut iter = interval.steps(4);
+/// assert_eq!(iter.next(), Some(0.0));
+/// assert_eq!(iter.next(), Some(1.0));
+/// assert_eq!(iter.next(), Some(2.0));
+/// assert_eq!(iter.next(), Some(3.0));
+/// assert_eq!(iter.next(), Some(4.0));
+/// assert_eq!(iter.next(), None);
+/// ```
+#[derive(Clone, Debug)]
+pub struct Steps {
+    tmax: f64,
+    t: f64,
+    dt: f64,
+    n: usize,
+    i: usize,
+}
+
+impl Iterator for Steps {
+    type Item = f64;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i == self.n + 1 {
+            None
+        } else if self.i < self.n {
+            let ti = self.t;
+            self.t += self.dt;
+            self.i += 1;
+            Some(ti)
+        } else {
+            self.i += 1;
+            Some(self.tmax)
+        }
+    }
+}
+
+/// Extra functions for the `Interval` type.
+pub trait IntervalExt {
+    /// Iterates over `n` equally spaced steps between the interval endpoints,
+    /// beginning and ending with the endpoints themselves.
+    fn steps(&self, n: usize) -> Steps;
+}
+
+impl IntervalExt for Interval {
+    fn steps(&self, n: usize) -> Steps {
+        Steps {
+            tmax: self.1,
+            t: self.0,
+            dt: (self.1 - self.0) / (n as f64),
+            i: 0,
+            n,
+        }
+    }
+}
+
 /// Curves.
 pub mod curve {
     use euler::{DVec3, DVec4};
