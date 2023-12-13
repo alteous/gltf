@@ -9,6 +9,11 @@ use schemars::JsonSchema;
 use serde_derive::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
+// Used to skip serialization of `false` values.
+fn bool_is_false(b: &bool) -> bool {
+    !*b
+}
+
 /// 2D and 3D curve definitions.
 pub mod curve {
     use crate::validation::{Checked, Error, Validate};
@@ -482,6 +487,7 @@ pub struct Edge {
     pub end: Option<Index<Vertex>>,
 
     /// Marker for a closed edge.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
     pub closed: bool,
 
     /// Interval for the curve's 't' parameter.
@@ -650,13 +656,14 @@ impl Validate for Interval {
     }
 }
 
-/// Curve in 2D surface space.
+/// Curve tracing the path of an edge in 2D surface space.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
 pub struct Trace {
-    /// The edge curve geometry in 2D (or homogeneous 3D) space.
+    /// The trace curve geometry in 2D (or homogeneous 3D) space.
     pub curve: IndexWithOrientation<Curve>,
 
-    /// Marker for a closed path.
+    /// Marker for a closed trace.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
     pub closed: bool,
 
     /// Interval for the curve 't' parameter.
