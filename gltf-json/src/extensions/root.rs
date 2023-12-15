@@ -1,10 +1,9 @@
 use gltf_derive::Validate;
+#[cfg(feature = "KITTYCAD_boundary_representation")]
 use schemars::JsonSchema;
 use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
-
-use crate::extensions::kittycad_boundary_representation as kcad;
 
 /// The root object of a glTF 2.0 asset.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
@@ -136,6 +135,9 @@ macro_rules! impl_get_for_kcad {
         }
     };
 }
+
+#[cfg(feature = "KITTYCAD_boundary_representation")]
+use crate::extensions::kittycad_boundary_representation as kcad;
 
 impl_get_for_kcad!(kcad::Solid, solids);
 impl_get_for_kcad!(kcad::Shell, shells);
