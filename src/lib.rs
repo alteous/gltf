@@ -181,7 +181,7 @@ pub use self::import::import_slice;
 #[cfg(feature = "KITTYCAD_boundary_representation")]
 #[doc(inline)]
 pub use self::kittycad_boundary_representation::{
-    Curve, Edge, Face, Loop, Shell, Solid, Surface, Vertex,
+    Curve, Edge, Face, Loop, Shell, Solid, Surface, Vector, Vertex,
 };
 #[doc(inline)]
 pub use self::material::Material;

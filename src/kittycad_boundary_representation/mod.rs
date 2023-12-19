@@ -2,7 +2,7 @@ use crate::{Document, Mesh};
 use json::extensions::kittycad_boundary_representation as kcad;
 
 #[doc(inline)]
-pub use kcad::{Interval, Orientation};
+pub use kcad::{Axes, Interval, Orientation, Vector};
 
 #[doc(inline)]
 pub use curve::Curve;
@@ -71,41 +71,25 @@ impl IntervalExt for Interval {
 
 /// Curves.
 pub mod curve {
-    use euler::{DVec3, DVec4};
+    use euler::{DVec2, DVec3, DVec4};
     use json::extensions::kittycad_boundary_representation as kcad;
 
-    /// Circular curve definition.
-    ///
-    /// λ(u) := O + R(cos(u)x + sin(u)y), where:
-    /// * O = `self.origin`,
-    /// * R = `self.radius`,
-    /// * x = `self.xbasis`,
-    /// * y = `self.normal` × `self.xbasis`,
-    /// * u ∈ {0, 2π}.
-    ///
-    /// The `xbasis` and `normal` vectors form an orthonormal set.
+    /// Circle in 2D space.
     #[derive(Clone, Debug)]
-    pub struct Circle<'a> {
+    pub struct Circle2d<'a> {
         /// The corresponding JSON struct.
         pub(crate) json: &'a kcad::curve::Circle,
     }
 
-    impl<'a> Circle<'a> {
+    impl<'a> Circle2d<'a> {
         /// Position at the center of the circle.
-        pub fn origin(&self) -> Option<[f64; 3]> {
-            self.json.origin
+        pub fn origin(&self) -> [f64; 2] {
+            self.json.origin.into()
         }
 
         /// Distance from the center position to all points on the circle.
         pub fn radius(&self) -> f64 {
             self.json.radius
-        }
-
-        /// Normal vector to the plane containing the circle.
-        ///
-        /// This serves as the Z basis in the parametric co-ordinate space.
-        pub fn normal(&self) -> [f64; 3] {
-            self.json.normal
         }
 
         /// Unit vector in the direction from the origin to the point on
@@ -114,33 +98,120 @@ pub mod curve {
         /// Due to floating point precision, this vector may not lie exactly
         /// in the plane. If this is the case then the X vector is treated
         /// as the projection of this vector onto the plane.
-        pub fn xbasis(&self) -> [f64; 3] {
-            self.json.xbasis
+        pub fn xaxis(&self) -> [f64; 2] {
+            self.json.axes.x.unwrap_or(kcad::Vector::I_2D).into()
+        }
+
+        /// Unit vector in the direction from the origin to the point on
+        /// the circle at λ(π / 2).
+        pub fn yaxis(&self) -> [f64; 2] {
+            self.json.axes.y.unwrap_or(kcad::Vector::J_2D).into()
+        }
+
+        /// Evaluate the curve at parameter value `t`.
+        pub fn evaluate(&self, t: f64) -> [f64; 2] {
+            let radius = self.json.radius;
+            let origin = DVec2::from(self.origin());
+            let xaxis = DVec2::from(self.xaxis());
+            let yaxis = DVec2::from(self.yaxis());
+            let (sine, cosine) = t.sin_cos();
+            (origin + (xaxis * cosine + yaxis * sine) * radius).into()
+        }
+    }
+
+    /// Circle in 3D space.
+    #[derive(Clone, Debug)]
+    pub struct Circle3d<'a> {
+        /// The corresponding JSON struct.
+        pub(crate) json: &'a kcad::curve::Circle,
+    }
+
+    impl<'a> Circle3d<'a> {
+        /// Position at the center of the circle.
+        pub fn origin(&self) -> [f64; 3] {
+            self.json.origin.into()
+        }
+
+        /// Distance from the center position to all points on the circle.
+        pub fn radius(&self) -> f64 {
+            self.json.radius
+        }
+
+        /// Unit vector in the direction from the origin to the point on
+        /// the circle at λ(0).
+        ///
+        /// Due to floating point precision, this vector may not lie exactly
+        /// in the plane. If this is the case then the X vector is treated
+        /// as the projection of this vector onto the plane.
+        pub fn xaxis(&self) -> [f64; 3] {
+            self.json.axes.x.unwrap_or(kcad::Vector::I_3D).into()
+        }
+
+        /// Unit vector in the direction from the origin to the point on
+        /// the circle at λ(π / 2).
+        pub fn yaxis(&self) -> [f64; 3] {
+            self.json.axes.y.unwrap_or(kcad::Vector::J_3D).into()
+        }
+
+        /// Normal vector to the plane containing the circle.
+        ///
+        /// This serves as the Z basis in the parametric co-ordinate space.
+        pub fn zaxis(&self) -> [f64; 3] {
+            DVec3::from(self.xaxis())
+                .cross(DVec3::from(self.yaxis()))
+                .into()
         }
 
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
             let radius = self.json.radius;
-            let origin = DVec3::from(self.json.origin.unwrap_or_default());
-            let xbasis = DVec3::from(self.json.xbasis);
-            let normal = DVec3::from(self.json.normal);
-            let ybasis = normal.cross(xbasis);
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
             let (sine, cosine) = t.sin_cos();
-            (origin + (xbasis * cosine + ybasis * sine) * radius).into()
+            (origin + (xaxis * cosine + yaxis * sine) * radius).into()
         }
     }
 
     /// Defines a line curve.
     #[derive(Clone, Debug)]
-    pub struct Line<'a> {
+    pub struct Line2d<'a> {
         /// The corresponding JSON struct.
         pub(crate) json: &'a kcad::curve::Line,
     }
 
-    impl<'a> Line<'a> {
+    impl<'a> Line2d<'a> {
+        /// Returns the line origin point.
+        pub fn origin(&self) -> [f64; 2] {
+            self.json.origin.into()
+        }
+
+        /// Evaluate the curve at parameter value `t`.
+        pub fn evaluate(&self, t: f64) -> [f64; 2] {
+            let origin = DVec2::from(self.origin());
+            let direction = DVec2::from(self.direction());
+            (origin + t * direction).into()
+        }
+
+        /// Returns the line direction.
+        ///
+        /// If `end` was set, this will be computed.
+        pub fn direction(&self) -> [f64; 2] {
+            self.json.direction.into()
+        }
+    }
+
+    /// Defines a line curve.
+    #[derive(Clone, Debug)]
+    pub struct Line3d<'a> {
+        /// The corresponding JSON struct.
+        pub(crate) json: &'a kcad::curve::Line,
+    }
+
+    impl<'a> Line3d<'a> {
         /// Returns the line origin point.
         pub fn origin(&self) -> [f64; 3] {
-            self.json.origin.unwrap_or_default()
+            self.json.origin.into()
         }
 
         /// Evaluate the curve at parameter value `t`.
@@ -154,18 +225,66 @@ pub mod curve {
         ///
         /// If `end` was set, this will be computed.
         pub fn direction(&self) -> [f64; 3] {
-            self.json.direction
+            self.json.direction.into()
         }
     }
 
     /// Defines a non-uniform rational B-spline (NURBS) curve.
     #[derive(Clone, Debug)]
-    pub struct Nurbs<'a> {
+    pub struct Nurbs2d<'a> {
         /// The corresponding JSON struct.
         pub(crate) json: &'a kcad::curve::Nurbs,
     }
 
-    impl<'a> Nurbs<'a> {
+    impl<'a> Nurbs2d<'a> {
+        /// Evaluate the curve at parameter value `t`.
+        pub fn evaluate(&self, t: f64) -> [f64; 2] {
+            let [x, y, _] = Nurbs3d { json: self.json }.evaluate(t);
+            [x, y]
+        }
+
+        /// Returns the curve start point, i.e., the first control point.
+        pub fn start(&self) -> [f64; 2] {
+            self.json.control_points.first().unwrap().into()
+        }
+
+        /// Returns the curve end point, i.e., the last control point.
+        pub fn end(&self) -> [f64; 2] {
+            self.json.control_points.last().unwrap().into()
+        }
+
+        /// Returns the NURBS control points.
+        pub fn control_points(&self) -> impl ExactSizeIterator<Item = [f64; 2]> + 'a {
+            self.json
+                .control_points
+                .iter()
+                .copied()
+                .map(|vector| vector.into())
+        }
+
+        /// Returns the NURBS knot vector.
+        pub fn knot_vector(&self) -> &[f64] {
+            &self.json.knot_vector
+        }
+
+        /// Returns the order of the basis splines.
+        ///
+        /// # Notes
+        ///
+        /// The degree of the basis splines is one less than the order.
+        pub fn order(&self) -> u32 {
+            self.json.order
+        }
+    }
+
+    /// Defines a non-uniform rational B-spline (NURBS) curve.
+    #[derive(Clone, Debug)]
+    pub struct Nurbs3d<'a> {
+        /// The corresponding JSON struct.
+        pub(crate) json: &'a kcad::curve::Nurbs,
+    }
+
+    impl<'a> Nurbs3d<'a> {
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
             // Min/max knot value
@@ -203,12 +322,14 @@ pub mod curve {
                     .map(|ui| k - ui)
                     .expect("t does not lie between any knot");
 
+                // Weight iterator.
+                let weights = self.weights().iter().copied().chain(std::iter::repeat(1.0));
+
                 // New control points
                 let mut p = self
                     .control_points()
-                    .iter()
-                    .cloned()
-                    .map(|[x, y, z, w]| DVec4::new(x * w, y * w, z * w, w))
+                    .zip(weights)
+                    .map(|([x, y, z], w)| DVec4::new(x * w, y * w, z * w, w))
                     .collect::<Vec<_>>();
 
                 let h = d - m;
@@ -226,22 +347,23 @@ pub mod curve {
         }
 
         /// Returns the curve start point, i.e., the first control point.
-        fn start(&self) -> [f64; 3] {
-            // TODO: evaluate for domain.
-            let v = self.json.control_points[0];
-            [v[0], v[1], v[2]]
+        pub fn start(&self) -> [f64; 3] {
+            self.json.control_points.first().unwrap().into()
         }
 
         /// Returns the curve end point, i.e., the last control point.
-        fn end(&self) -> [f64; 3] {
-            // TODO: evaluate for domain.
-            let v = self.json.control_points[self.json.control_points.len() - 1];
-            [v[0], v[1], v[2]]
+        pub fn end(&self) -> [f64; 3] {
+            self.json.control_points.last().unwrap().into()
         }
 
         /// Returns the NURBS control points.
-        pub fn control_points(&self) -> &[[f64; 4]] {
-            &self.json.control_points
+        pub fn control_points(&self) -> impl ExactSizeIterator<Item = [f64; 3]> + 'a {
+            self.json.control_points.iter().map(|v| v.into())
+        }
+
+        /// Returns the NURBS control point weights.
+        pub fn weights(&self) -> &[f64] {
+            &self.json.weights
         }
 
         /// Returns the NURBS knot vector.
@@ -261,18 +383,18 @@ pub mod curve {
 
     /// Curve kind.
     #[derive(Clone, Debug)]
-    pub enum Geometry<'a> {
+    pub enum Geometry2d<'a> {
         /// Circular curve.
-        Circle(Circle<'a>),
+        Circle(Circle2d<'a>),
         /// Linear curve.
-        Line(Line<'a>),
+        Line(Line2d<'a>),
         /// Non-uniform rational B-spline (NURBS) curve.
-        Nurbs(Nurbs<'a>),
+        Nurbs(Nurbs2d<'a>),
     }
 
     /// Abstract curve.
     #[derive(Clone, Debug)]
-    pub struct Curve<'a> {
+    pub struct Curve2d<'a> {
         /// The corresponding JSON index.
         index: usize,
 
@@ -280,7 +402,64 @@ pub mod curve {
         json: &'a kcad::Curve,
     }
 
-    impl<'a> Curve<'a> {
+    impl<'a> Curve2d<'a> {
+        /// Constructs a `Curve`.
+        pub fn new(index: usize, json: &'a kcad::Curve) -> Self {
+            Self { index, json }
+        }
+
+        /// Returns the internal JSON index.
+        pub fn index(&self) -> usize {
+            self.index
+        }
+
+        /// Optional user-defined name for this object.
+        #[cfg(feature = "names")]
+        pub fn name(&self) -> Option<&'a str> {
+            self.json.name.as_deref()
+        }
+
+        /// Evaluate the curve at parameter value `t`.
+        pub fn evaluate(&self, t: f64) -> [f64; 2] {
+            match self.geometry() {
+                Geometry2d::Circle(circle) => circle.evaluate(t),
+                Geometry2d::Line(line) => line.evaluate(t),
+                Geometry2d::Nurbs(nurbs) => nurbs.evaluate(t),
+            }
+        }
+
+        /// Returns the specific underlying curve geometry.
+        pub fn geometry(&self) -> Geometry2d<'a> {
+            match self.json.geometry {
+                kcad::curve::Geometry::Circle(ref json) => Geometry2d::Circle(Circle2d { json }),
+                kcad::curve::Geometry::Line(ref json) => Geometry2d::Line(Line2d { json }),
+                kcad::curve::Geometry::Nurbs(ref json) => Geometry2d::Nurbs(Nurbs2d { json }),
+            }
+        }
+    }
+
+    /// Curve kind.
+    #[derive(Clone, Debug)]
+    pub enum Geometry3d<'a> {
+        /// Circular curve.
+        Circle(Circle3d<'a>),
+        /// Linear curve.
+        Line(Line3d<'a>),
+        /// Non-uniform rational B-spline (NURBS) curve.
+        Nurbs(Nurbs3d<'a>),
+    }
+
+    /// Abstract curve.
+    #[derive(Clone, Debug)]
+    pub struct Curve3d<'a> {
+        /// The corresponding JSON index.
+        index: usize,
+
+        /// The corresponding JSON struct.
+        json: &'a kcad::Curve,
+    }
+
+    impl<'a> Curve3d<'a> {
         /// Constructs a `Curve`.
         pub fn new(index: usize, json: &'a kcad::Curve) -> Self {
             Self { index, json }
@@ -300,19 +479,56 @@ pub mod curve {
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
             match self.geometry() {
-                Geometry::Circle(circle) => circle.evaluate(t),
-                Geometry::Line(line) => line.evaluate(t),
-                Geometry::Nurbs(nurbs) => nurbs.evaluate(t),
+                Geometry3d::Circle(circle) => circle.evaluate(t),
+                Geometry3d::Line(line) => line.evaluate(t),
+                Geometry3d::Nurbs(nurbs) => nurbs.evaluate(t),
             }
         }
 
         /// Returns the specific underlying curve geometry.
-        pub fn geometry(&self) -> Geometry<'a> {
+        pub fn geometry(&self) -> Geometry3d<'a> {
             match self.json.geometry {
-                kcad::curve::Geometry::Circle(ref json) => Geometry::Circle(Circle { json }),
-                kcad::curve::Geometry::Line(ref json) => Geometry::Line(Line { json }),
-                kcad::curve::Geometry::Nurbs(ref json) => Geometry::Nurbs(Nurbs { json }),
+                kcad::curve::Geometry::Circle(ref json) => Geometry3d::Circle(Circle3d { json }),
+                kcad::curve::Geometry::Line(ref json) => Geometry3d::Line(Line3d { json }),
+                kcad::curve::Geometry::Nurbs(ref json) => Geometry3d::Nurbs(Nurbs3d { json }),
             }
+        }
+    }
+
+    /// Abstract curve.
+    #[derive(Clone, Debug)]
+    pub struct Curve<'a> {
+        /// The corresponding JSON index.
+        index: usize,
+
+        /// The corresponding JSON struct.
+        json: &'a kcad::Curve,
+    }
+
+    impl<'a> Curve<'a> {
+        /// Constructs a `Curve`.
+        pub fn new(index: usize, json: &'a kcad::Curve) -> Self {
+            Self { index, json }
+        }
+
+        /// Queries whether the curve geometry is in 2D space.
+        pub fn is_2d(&self) -> bool {
+            !self.is_3d()
+        }
+
+        /// Queries whether the curve geometry is in 3D space.
+        pub fn is_3d(&self) -> bool {
+            self.json.geometry.is_3d()
+        }
+
+        /// Interprets the curve as 2D.
+        pub fn as_2d(&self) -> Curve2d<'a> {
+            Curve2d::new(self.index, self.json)
+        }
+
+        /// Interprets the curve as 3D.
+        pub fn as_3d(&self) -> Curve3d<'a> {
+            Curve3d::new(self.index, self.json)
         }
     }
 
@@ -340,17 +556,18 @@ pub mod curve {
         }
 
         #[test]
-        fn evaluate_nurbs_arc_quadratic() {
+        fn evaluate_nurbs_3d_arc_quadratic() {
             let inner = kcad_json::curve::Nurbs {
                 control_points: vec![
-                    [1.0, 0.0, 0.0, 1.0],
-                    [1.0, 1.0, 0.0, FRAC_1_SQRT_2],
-                    [0.0, 1.0, 0.0, 1.0],
+                    [1.0, 0.0, 0.0].into(),
+                    [1.0, 1.0, 0.0].into(),
+                    [0.0, 1.0, 0.0].into(),
                 ],
+                weights: vec![1.0, FRAC_1_SQRT_2, 1.0],
                 knot_vector: vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
                 order: 3,
             };
-            let curve = super::Nurbs { json: &inner };
+            let curve = super::Nurbs3d { json: &inner };
 
             let test_points = [
                 (0.0, [1.0, 0.0, 0.0]),
@@ -371,18 +588,19 @@ pub mod curve {
         }
 
         #[test]
-        fn evaluate_nurbs_half_circle_cubic() {
+        fn evaluate_nurbs_3d_half_circle_cubic() {
             let inner = kcad_json::curve::Nurbs {
                 control_points: vec![
-                    [1.0, 0.0, 0.0, 1.0],
-                    [1.0, 2.0, 0.0, 1.0 / 3.0],
-                    [-1.0, 2.0, 0.0, 1.0 / 3.0],
-                    [-1.0, 0.0, 0.0, 1.0],
+                    [1.0, 0.0, 0.0].into(),
+                    [1.0, 2.0, 0.0].into(),
+                    [-1.0, 2.0, 0.0].into(),
+                    [-1.0, 0.0, 0.0].into(),
                 ],
+                weights: vec![1.0, 1.0 / 3.0, 1.0 / 3.0, 1.0],
                 knot_vector: vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0],
                 order: 4,
             };
-            let curve = super::Nurbs { json: &inner };
+            let curve = super::Nurbs3d { json: &inner };
 
             let test_points = [
                 (0.0, [1.0, 0.0, 0.0]),
@@ -403,13 +621,12 @@ pub mod curve {
         }
 
         #[test]
-        fn evaluate_circle_basic() {
-            let curve = super::Circle {
+        fn evaluate_circle_3d_basic() {
+            let curve = super::Circle3d {
                 json: &kcad_json::curve::Circle {
-                    origin: Some([0.0, 0.0, 0.0]),
+                    axes: kcad_json::Axes::DEFAULT_3D,
+                    origin: [0.0, 0.0, 0.0].into(),
                     radius: 2.0,
-                    normal: [0.0, 0.0, 1.0],
-                    xbasis: [1.0, 0.0, 0.0],
                 },
             };
 
@@ -431,13 +648,12 @@ pub mod curve {
         }
 
         #[test]
-        fn evaluate_circle_offset() {
-            let curve = super::Circle {
+        fn evaluate_circle_3d_offset() {
+            let curve = super::Circle3d {
                 json: &kcad_json::curve::Circle {
-                    origin: Some([1.2, 3.4, 5.6]),
+                    axes: kcad_json::Axes::DEFAULT_3D,
+                    origin: [1.2, 3.4, 5.6].into(),
                     radius: 2.0,
-                    normal: [0.0, 0.0, 1.0],
-                    xbasis: [1.0, 0.0, 0.0],
                 },
             };
 
@@ -486,16 +702,31 @@ pub mod surface {
     }
 
     impl<'a> Cylinder<'a> {
-        /// The extruded circle.
-        pub fn circle(&self) -> super::curve::Circle<'a> {
-            super::curve::Circle {
-                json: &self.json.circle,
-            }
+        /// Local 'x' axis.
+        pub fn xaxis(&self) -> [f64; 3] {
+            self.json.axes.x.unwrap_or(kcad::Vector::I_3D).into()
         }
 
-        /// Height of the extruded circle.
-        pub fn height(&self) -> f64 {
-            self.json.height
+        /// Local 'y' axis.
+        pub fn yaxis(&self) -> [f64; 3] {
+            self.json.axes.y.unwrap_or(kcad::Vector::J_3D).into()
+        }
+
+        /// Local 'z' axis.
+        pub fn zaxis(&self) -> [f64; 3] {
+            DVec3::from(self.xaxis())
+                .cross(DVec3::from(self.yaxis()))
+                .into()
+        }
+
+        /// Origin of the base circle.
+        pub fn origin(&self) -> [f64; 3] {
+            self.json.origin
+        }
+
+        /// Radius of the base circle.
+        pub fn radius(&self) -> f64 {
+            self.json.radius
         }
     }
 
@@ -507,29 +738,30 @@ pub mod surface {
     }
 
     impl<'a> Plane<'a> {
-        /// Returns the normal vector to the plane.
-        pub fn normal(&self) -> [f64; 3] {
-            self.json.normal
+        /// Local 'x' axis.
+        pub fn xaxis(&self) -> [f64; 3] {
+            self.json.axes.x.unwrap_or(kcad::Vector::I_3D).into()
         }
 
-        /// Returns an arbitrary point that lies on the plane.
-        pub fn point(&self) -> [f64; 3] {
-            self.json.point
+        /// Local 'y' axis.
+        pub fn yaxis(&self) -> [f64; 3] {
+            self.json.axes.y.unwrap_or(kcad::Vector::J_3D).into()
+        }
+
+        /// Local 'z' axis.
+        pub fn zaxis(&self) -> [f64; 3] {
+            DVec3::from(self.xaxis())
+                .cross(DVec3::from(self.yaxis()))
+                .into()
+        }
+
+        /// Arbitrary origin point on the plane.
+        pub fn origin(&self) -> [f64; 3] {
+            self.json.origin
         }
     }
 
     /// Parametric spherical surface definition.
-    ///
-    /// σ(u, v) := O + Rcos(v)(cos(u)x + sin(u)y) + Rsin(v)z, where:
-    /// * O = `self.horizon().origin()`,
-    /// * R = `self.horizon().radius()`,
-    /// * x = `self.horizon().xbasis()`,
-    /// * y = `self.horizon().normal()` × `self.horizon().xbasis()`,
-    /// * z = `self.horizon().normal()`,
-    /// * u ∈ {0, 2π},
-    /// * v ∈ {0, 2π}.
-    ///
-    /// Spheres are defined in reference to a circle at zero inclination.
     #[derive(Clone, Debug)]
     pub struct Sphere<'a> {
         /// The corresponding JSON struct.
@@ -537,21 +769,40 @@ pub mod surface {
     }
 
     impl<'a> Sphere<'a> {
-        /// The circle at zero inclination.
-        pub fn horizon(&self) -> super::curve::Circle<'a> {
-            super::curve::Circle {
-                json: &self.json.horizon,
-            }
+        /// Local 'x' axis.
+        pub fn xaxis(&self) -> [f64; 3] {
+            self.json.axes.x.unwrap_or(kcad::Vector::I_3D).into()
+        }
+
+        /// Local 'y' axis.
+        pub fn yaxis(&self) -> [f64; 3] {
+            self.json.axes.y.unwrap_or(kcad::Vector::J_3D).into()
+        }
+
+        /// Local 'z' axis.
+        pub fn zaxis(&self) -> [f64; 3] {
+            DVec3::from(self.xaxis())
+                .cross(DVec3::from(self.yaxis()))
+                .into()
+        }
+
+        /// Origin (center) of the sphere.
+        pub fn origin(&self) -> [f64; 3] {
+            self.json.origin
+        }
+
+        /// Radius of the sphere.
+        pub fn radius(&self) -> f64 {
+            self.json.radius
         }
 
         /// Evaluate the sphere at (u, v).
         pub fn evaluate(&self, [u, v]: [f64; 2]) -> [f64; 3] {
-            let horizon = self.horizon();
-            let r = horizon.radius();
-            let a = DVec3::from(horizon.origin().unwrap_or_default());
-            let x = DVec3::from(horizon.xbasis());
-            let z = DVec3::from(horizon.normal());
-            let y = z.cross(x);
+            let r = self.radius();
+            let a = DVec3::from(self.origin());
+            let x = DVec3::from(self.xaxis());
+            let y = DVec3::from(self.yaxis());
+            let z = DVec3::from(self.zaxis());
             let (sin_u, cos_u) = u.sin_cos();
             let (sin_v, cos_v) = v.sin_cos();
             let b = a + r * cos_v * (cos_u * x + sin_u * y) + r * sin_v * z;
@@ -562,30 +813,20 @@ pub mod surface {
         ///
         /// The result is unspecified if (x, y, z) does not lie on the sphere
         /// within a reasonable tolerance.
-        pub fn evaluate_inverse(&self, [x, y, z]: [f64; 3]) -> [f64; 2] {
-            let horizon = self.horizon();
-            let r = horizon.radius();
-            let a = DVec3::from(horizon.origin().unwrap_or_default());
-            let b = DVec3::new(x, y, z);
-            let x = DVec3::from(horizon.xbasis());
-            let z = DVec3::from(horizon.normal());
-            let y = z.cross(x);
-            let ab = b - a;
-            let u = ab.dot(y).atan2(ab.dot(x));
-            let v = (ab.dot(z) / r).asin();
+        pub fn evaluate_inverse(&self, point: [f64; 3]) -> [f64; 2] {
+            let origin = self.origin();
+            let radius = self.radius();
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            let zaxis = DVec3::from(self.zaxis());
+            let ab = DVec3::from(point) - DVec3::from(origin);
+            let u = ab.dot(yaxis).atan2(ab.dot(xaxis));
+            let v = (ab.dot(zaxis) / radius).asin();
             [u, v]
         }
     }
 
     /// Toroidal surface definition.
-    ///
-    /// σ(u, v) := O + (R + rcos(v))(cos(u)x + sin(u)y) + rsin(v)z, where:
-    /// * O = `self.origin()`,
-    /// * R = `self.circle().major_radius()`,
-    /// * r = `self.circle().minor_radius()`,
-    /// * x = `self.circle().xbasis()`,
-    /// * y = `self.circle().ybasis()`,
-    /// * z = `self.circle().zbasis()`.
     #[derive(Clone, Debug)]
     pub struct Torus<'a> {
         /// The corresponding JSON struct.
@@ -593,21 +834,36 @@ pub mod surface {
     }
 
     impl<'a> Torus<'a> {
+        /// Local 'x' axis.
+        pub fn xaxis(&self) -> [f64; 3] {
+            self.json.axes.x.unwrap_or(kcad::Vector::I_3D).into()
+        }
+
+        /// Local 'y' axis.
+        pub fn yaxis(&self) -> [f64; 3] {
+            self.json.axes.y.unwrap_or(kcad::Vector::J_3D).into()
+        }
+
+        /// Local 'z' axis.
+        pub fn zaxis(&self) -> [f64; 3] {
+            DVec3::from(self.xaxis())
+                .cross(DVec3::from(self.yaxis()))
+                .into()
+        }
+
         /// The center of the torus.
         pub fn origin(&self) -> [f64; 3] {
             self.json.origin
         }
 
-        /// The revolved circle.
-        pub fn circle(&self) -> super::curve::Circle<'a> {
-            super::curve::Circle {
-                json: &self.json.circle,
-            }
+        /// Distance from the torus origin to the origin of the revolved circle.
+        pub fn major_radius(&self) -> f64 {
+            self.json.major_radius
         }
 
-        /// Distance from the origin to the origin of the base circle.
-        pub fn radius(&self) -> f64 {
-            self.json.radius
+        /// Distance of points away from the center of the revolved circle.
+        pub fn minor_radius(&self) -> f64 {
+            self.json.minor_radius
         }
     }
 
@@ -620,8 +876,13 @@ pub mod surface {
 
     impl<'a> Nurbs<'a> {
         /// Returns the matrix of control points.
-        pub fn control_points(&self) -> &[[f64; 4]] {
+        pub fn control_points(&self) -> &[[f64; 3]] {
             &self.json.control_points
+        }
+
+        /// Returns the matrix of control point weights.
+        pub fn weights(&self) -> &[f64] {
+            &self.json.weights
         }
 
         /// Returns the dimensions of the control point matrix.
@@ -722,12 +983,9 @@ pub mod surface {
         fn evaluate_sphere_basic() {
             let sphere = super::Sphere {
                 json: &kcad_json::surface::Sphere {
-                    horizon: kcad_json::curve::Circle {
-                        origin: Some([0.0, 0.0, 0.0]),
-                        radius: 2.0,
-                        normal: [0.0, 0.0, 1.0],
-                        xbasis: [1.0, 0.0, 0.0],
-                    },
+                    axes: kcad_json::Axes::DEFAULT_3D,
+                    origin: [0.0, 0.0, 0.0].into(),
+                    radius: 2.0,
                 },
             };
 
@@ -761,12 +1019,9 @@ pub mod surface {
             let offset = [1.2, 3.4, 5.6];
             let sphere = super::Sphere {
                 json: &kcad_json::surface::Sphere {
-                    horizon: kcad_json::curve::Circle {
-                        origin: Some(offset),
-                        radius: 2.0,
-                        normal: [0.0, 0.0, 1.0],
-                        xbasis: [1.0, 0.0, 0.0],
-                    },
+                    axes: kcad_json::Axes::DEFAULT_3D,
+                    origin: offset.into(),
+                    radius: 2.0,
                 },
             };
 

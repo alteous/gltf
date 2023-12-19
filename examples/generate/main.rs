@@ -18,7 +18,7 @@ fn join(a: &str, b: &str) -> String {
 ///
 /// See [`GLTF_BINARY_ALIGNMENT`] for more information.
 pub fn pad_to_align(v: &mut Vec<u8>, padding: u8) {
-    while v.len() as u32 % 4 != 0 {
+    while v.len() % 4 != 0 {
         v.push(padding);
     }
 }
@@ -58,7 +58,7 @@ fn package(mut json: Vec<u8>, mut bin: Vec<u8>) -> Result<Vec<u8>> {
     Ok(data)
 }
 
-const VERTEX_SIZE: u32 = 44;
+const VERTEX_SIZE: usize = 44;
 
 // 3-2
 // | |
@@ -93,13 +93,13 @@ fn main() -> UnitResult {
     let mut bin = Vec::new();
 
     // Write vertices
-    let vertex_data_offset = 0;
+    let vertex_data_offset = 0usize;
     let mut vertex_data_length = 0;
     for position in QUAD_POSITIONS {
-        let mut bytes_written = 0u32;
+        let mut bytes_written = 0;
         for x in position {
             bin.write_f32::<LittleEndian>(*x).unwrap();
-            bytes_written += std::mem::size_of::<f32>() as u32;
+            bytes_written += std::mem::size_of::<f32>();
         }
         while bytes_written < VERTEX_SIZE {
             bin.push(0);
@@ -109,11 +109,11 @@ fn main() -> UnitResult {
     }
 
     // Write indices
-    let index_data_offset = bin.len() as u32;
+    let index_data_offset = bin.len();
     let mut index_data_length = 0;
     for index in QUAD_INDICES {
         bin.write_u32::<LittleEndian>(*index)?;
-        index_data_length += std::mem::size_of::<u32>() as u32;
+        index_data_length += std::mem::size_of::<u32>();
     }
 
     let mut root = gltf::json::Root {
@@ -126,7 +126,7 @@ fn main() -> UnitResult {
     };
 
     root.buffers.push(gltf::json::Buffer {
-        byte_length: bin.len() as u32,
+        byte_length: bin.len().into(),
         extensions: None,
         extras: Default::default(),
         name: None,
@@ -139,9 +139,9 @@ fn main() -> UnitResult {
     });
     root.buffer_views.push(gltf::json::buffer::View {
         buffer: gltf::json::Index::new(0),
-        byte_length: vertex_data_length,
-        byte_offset: Some(vertex_data_offset),
-        byte_stride: Some(VERTEX_SIZE),
+        byte_length: vertex_data_length.into(),
+        byte_offset: Some(vertex_data_offset.into()),
+        byte_stride: Some(gltf::json::buffer::Stride(VERTEX_SIZE)),
         extensions: None,
         extras: Default::default(),
         name: Some("vertex-buffer".to_string()),
@@ -149,8 +149,8 @@ fn main() -> UnitResult {
     });
     root.buffer_views.push(gltf::json::buffer::View {
         buffer: gltf::json::Index::new(0),
-        byte_length: index_data_length,
-        byte_offset: Some(index_data_offset),
+        byte_length: index_data_length.into(),
+        byte_offset: Some(index_data_offset.into()),
         byte_stride: None,
         extensions: None,
         extras: Default::default(),
@@ -159,8 +159,8 @@ fn main() -> UnitResult {
     });
     root.accessors.push(gltf::json::Accessor {
         buffer_view: Some(gltf::json::Index::new(0)),
-        byte_offset: 0,
-        count: QUAD_POSITIONS.len() as u32,
+        byte_offset: Some(0usize.into()),
+        count: QUAD_POSITIONS.len().into(),
         component_type: Valid(gltf::json::accessor::GenericComponentType(
             gltf::json::accessor::ComponentType::F32,
         )),
@@ -175,8 +175,8 @@ fn main() -> UnitResult {
     });
     root.accessors.push(gltf::json::Accessor {
         buffer_view: Some(gltf::json::Index::new(0)),
-        byte_offset: 0,
-        count: QUAD_INDICES.len() as u32,
+        byte_offset: Some(0usize.into()),
+        count: QUAD_INDICES.len().into(),
         component_type: Valid(gltf::json::accessor::GenericComponentType(
             gltf::json::accessor::ComponentType::U32,
         )),
