@@ -89,32 +89,39 @@ impl crate::root::Get<crate::extensions::scene::khr_materials_variants::Variant>
 #[schemars(rename = "KITTYCAD_boundary_representation")]
 pub struct KittyCadBoundaryRepresentation {
     /// Solid boundary representation instances.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub solids: Vec<kcad::Solid>,
 
     /// Shell definitions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub shells: Vec<kcad::Shell>,
 
     /// Face definitions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub faces: Vec<kcad::Face>,
 
     /// Loop definitions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub loops: Vec<kcad::Loop>,
 
     /// Edge definitions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub edges: Vec<kcad::Edge>,
 
     /// Vertices in 3D space joining edges.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub vertices: Vec<kcad::Vertex>,
 
     /// Surface definitions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub surfaces: Vec<kcad::Surface>,
 
     /// 2D curve definitions.
-    #[serde(rename = "curves2D")]
+    #[serde(default, rename = "curves2D", skip_serializing_if = "Vec::is_empty")]
     pub curves_2d: Vec<kcad::Curve2d>,
 
     /// 3D curve definitions.
-    #[serde(rename = "curves3D")]
+    #[serde(default, rename = "curves3D")]
     pub curves_3d: Vec<kcad::Curve3d>,
 }
 

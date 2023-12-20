@@ -271,7 +271,7 @@ pub mod curve {
     /// Abstract curve data.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
     #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve")]
+    #[schemars(rename = "curve3D")]
     pub struct Curve2d {
         /// Discriminant.
         #[serde(rename = "type")]
@@ -290,7 +290,7 @@ pub mod curve {
     /// Abstract curve data.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
     #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve")]
+    #[schemars(rename = "curve3D")]
     pub struct Curve3d {
         /// Discriminant.
         #[serde(rename = "type")]
