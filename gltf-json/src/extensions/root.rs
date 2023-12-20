@@ -109,8 +109,13 @@ pub struct KittyCadBoundaryRepresentation {
     /// Surface definitions.
     pub surfaces: Vec<kcad::Surface>,
 
-    /// Curve definitions.
-    pub curves: Vec<kcad::Curve>,
+    /// 2D curve definitions.
+    #[serde(rename = "curves2D")]
+    pub curves_2d: Vec<kcad::Curve2d>,
+
+    /// 3D curve definitions.
+    #[serde(rename = "curves3D")]
+    pub curves_3d: Vec<kcad::Curve3d>,
 }
 
 macro_rules! impl_get_for_kcad {
@@ -146,4 +151,5 @@ impl_get_for_kcad!(kcad::Loop, loops);
 impl_get_for_kcad!(kcad::Edge, edges);
 impl_get_for_kcad!(kcad::Vertex, vertices);
 impl_get_for_kcad!(kcad::Surface, surfaces);
-impl_get_for_kcad!(kcad::Curve, curves);
+impl_get_for_kcad!(kcad::Curve2d, curves_2d);
+impl_get_for_kcad!(kcad::Curve3d, curves_3d);
