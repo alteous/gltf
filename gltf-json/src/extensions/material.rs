@@ -129,7 +129,7 @@ pub struct PbrSpecularGlossiness {
     pub others: Map<String, Value>,
 
     /// Optional application specific data.
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
@@ -222,7 +222,7 @@ pub struct Transmission {
     pub transmission_texture: Option<texture::Info>,
 
     /// Optional application specific data.
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
@@ -254,7 +254,7 @@ pub struct Ior {
     pub ior: IndexOfRefraction,
 
     /// Optional application specific data.
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
@@ -353,7 +353,7 @@ pub struct Volume {
     pub attenuation_color: AttenuationColor,
 
     /// Optional application specific data.
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
@@ -411,7 +411,7 @@ pub struct Specular {
     pub specular_color_texture: Option<texture::Info>,
 
     /// Optional application specific data.
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }

@@ -2,12 +2,9 @@ use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 use std::fmt;
 
-#[cfg(feature = "extras")]
-pub use serde_json::value::RawValue;
-
 /// Data type of the `extras` attribute on all glTF objects.
 #[cfg(feature = "extras")]
-pub type Extras = Option<::std::boxed::Box<RawValue>>;
+pub type Extras = std::collections::BTreeMap<String, serde_json::Value>;
 
 /// Data type of the `extras` attribute on all glTF objects.
 #[cfg(not(feature = "extras"))]

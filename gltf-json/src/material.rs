@@ -123,7 +123,7 @@ pub struct Material {
     pub extensions: Option<extensions::material::Material>,
 
     /// Optional application specific data.
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
@@ -170,7 +170,7 @@ pub struct PbrMetallicRoughness {
     pub extensions: Option<extensions::material::PbrMetallicRoughness>,
 
     /// Optional application specific data.
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
@@ -197,7 +197,7 @@ pub struct NormalTexture {
 
     /// Optional application specific data.
     #[serde(default)]
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
@@ -226,7 +226,7 @@ pub struct OcclusionTexture {
 
     /// Optional application specific data.
     #[serde(default)]
-    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
 }
