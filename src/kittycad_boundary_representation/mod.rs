@@ -10,6 +10,10 @@ pub use curve::{Curve2d, Curve3d};
 #[doc(inline)]
 pub use surface::Surface;
 
+fn slice_truncated<T>(slice: &[T], range: std::ops::Range<usize>) -> &[T] {
+    &slice[range.start.min(slice.len())..range.end.min(slice.len())]
+}
+
 /// Iterates over `n` equally spaced steps between the interval endpoints,
 /// beginning and ending with the endpoints themselves.
 ///
@@ -730,6 +734,26 @@ pub mod surface {
         pub fn origin(&self) -> [f64; 3] {
             self.json.origin.unwrap_or_default()
         }
+
+        /// Evaluate the plane at (u, v).
+        pub fn evaluate(&self, [u, v]: [f64; 2]) -> [f64; 3] {
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            (origin + xaxis * u + yaxis * v).into()
+        }
+
+        /// Find (u, v) for a point (x, y, z) on the plane.
+        ///
+        /// The result is unspecified if (x, y, z) does not lie on the plane
+        /// within a reasonable tolerance.
+        pub fn evaluate_inverse(&self, point: [f64; 3]) -> [f64; 2] {
+            let origin = DVec3::from(self.origin());
+            let offset = DVec3::from(point) - origin;
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            [offset.dot(xaxis), offset.dot(yaxis)]
+        }
     }
 
     /// Parametric spherical surface definition.
@@ -877,6 +901,38 @@ pub mod surface {
         pub fn orders(&self) -> [u32; 2] {
             self.json.order
         }
+
+        /// Evaluate the surface at parameters `[u, v]`.
+        pub fn evaluate(&self, [u, v]: [f64; 2]) -> [f64; 3] {
+            use gltf_json::extensions::kittycad_boundary_representation as kcad_json;
+            let p = self.control_points();
+            let w = self.weights();
+            let [un, _] = self.num_control_points().map(|n| n as usize);
+            let (uk, vk) = self.knot_vectors();
+            let [up, vp] = self.orders().map(|n| n as usize);
+            let mut intermediates = Vec::new();
+            for i in 0..un {
+                let vstart = i * (vk.len() - vp);
+                let vend = (i + 1) * (vk.len() - vp);
+                let vslice = super::slice_truncated(p, vstart..vend);
+                let wslice = super::slice_truncated(w, vstart..vend);
+                let subcurve = kcad_json::curve::Nurbs3d {
+                    control_points: vslice.to_vec(),
+                    order: vp as u32,
+                    knot_vector: vk.to_vec(),
+                    weights: wslice.to_vec(),
+                };
+                let intermediate_point = super::curve::Nurbs3d { json: &subcurve }.evaluate(v);
+                intermediates.push(intermediate_point);
+            }
+            let subcurve = kcad_json::curve::Nurbs3d {
+                control_points: intermediates,
+                order: up as u32,
+                knot_vector: uk.to_vec(),
+                weights: Vec::new(),
+            };
+            super::curve::Nurbs3d { json: &subcurve }.evaluate(u)
+        }
     }
 
     /// Specific surface geometry.
@@ -892,6 +948,19 @@ pub mod surface {
         Sphere(Sphere<'a>),
         /// Toroidal surface.
         Torus(Torus<'a>),
+    }
+
+    impl<'a> Geometry<'a> {
+        /// Evaluate the surface at parameters `[u, v]`.
+        pub fn evaluate(&self, uv: [f64; 2]) -> [f64; 3] {
+            match self {
+                Geometry::Cylinder(_cylinder) => unimplemented!(),
+                Geometry::Nurbs(nurbs) => nurbs.evaluate(uv),
+                Geometry::Plane(plane) => plane.evaluate(uv),
+                Geometry::Sphere(sphere) => sphere.evaluate(uv),
+                Geometry::Torus(_torus) => unimplemented!(),
+            }
+        }
     }
 
     /// Abstract surface.
@@ -921,6 +990,11 @@ pub mod surface {
             self.json.name.as_deref()
         }
 
+        /// Evaluate the surface at parameters `[u, v]`.
+        pub fn evaluate(&self, uv: [f64; 2]) -> [f64; 3] {
+            self.geometry().evaluate(uv)
+        }
+
         /// Returns the specific underlying surface geometry.
         pub fn geometry(&self) -> Geometry<'a> {
             match self.json.geometry {
@@ -948,6 +1022,102 @@ pub mod surface {
                     .zip($actual.iter().copied())
                     .all(|(a, b)| approx::relative_eq!(a, b, epsilon = 0.001))
             }};
+        }
+
+        #[test]
+        fn evaluate_nurbs_basic() {
+            let inner = kcad_json::surface::Nurbs {
+                control_points: vec![
+                    [20.0, 0.0, 0.0],
+                    [20.0, 10.0, 0.0],
+                    [20.0, 0.0, 0.0],
+                    [20.0, 10.0, 0.0],
+                    [0.0, 0.0, -50.0],
+                    [0.0, 10.0, -50.0],
+                    [-20.0, 0.0, 0.0],
+                    [-20.0, 10.0, 0.0],
+                ],
+                num_control_points: [4, 2],
+                num_knots: [8, 4],
+                knot_vector: vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 10.0, 10.0],
+                order: [4, 2],
+                weights: Default::default(),
+            };
+            let nurbs = super::Nurbs { json: &inner };
+
+            let test_points = [
+                ([0.0, 0.0], [20.0, 0.0, 0.0]),
+                ([0.0, 2.5], [20.0, 2.5, 0.0]),
+                ([0.0, 5.0], [20.0, 5.0, 0.0]),
+                ([0.0, 7.5], [20.0, 7.5, 0.0]),
+                ([0.0, 10.0], [20.0, 10.0, 0.0]),
+                ([0.25, 0.0], [16.5625, 0.0, -7.03125]),
+                ([0.25, 2.5], [16.5625, 2.5, -7.03125]),
+                ([0.25, 5.0], [16.5625, 5.0, -7.03125]),
+                ([0.25, 7.5], [16.5625, 7.5, -7.03125]),
+                ([0.25, 10.0], [16.5625, 10.0, -7.03125]),
+                ([0.5, 0.0], [7.5, 0.0, -18.75]),
+                ([0.5, 2.5], [7.5, 2.5, -18.75]),
+                ([0.5, 5.0], [7.5, 5.0, -18.75]),
+                ([0.5, 7.5], [7.5, 7.5, -18.75]),
+                ([0.5, 10.0], [7.5, 10.0, -18.75]),
+                ([0.75, 0.0], [-5.3125, 0.0, -21.09375]),
+                ([0.75, 2.5], [-5.3125, 2.5, -21.09375]),
+                ([0.75, 5.0], [-5.3125, 5.0, -21.09375]),
+                ([0.75, 7.5], [-5.3125, 7.5, -21.09375]),
+                ([0.75, 10.0], [-5.3125, 10.0, -21.09375]),
+                ([1.0, 0.0], [-20.0, 0.0, 0.0]),
+                ([1.0, 2.5], [-20.0, 2.5, 0.0]),
+                ([1.0, 5.0], [-20.0, 5.0, 0.0]),
+                ([1.0, 7.5], [-20.0, 7.5, 0.0]),
+                ([1.0, 10.0], [-20.0, 10.0, 0.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(nurbs.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: nurbs.evaluate({a:?}) = {:?} != {b:?}",
+                        nurbs.evaluate(a)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_plane_basic() {
+            let plane = super::Plane {
+                json: &kcad_json::surface::Plane {
+                    axes: Some(kcad_json::Axes3d {
+                        x: [0.0, 1.0, 0.0],
+                        y: [0.0, 0.0, -1.0],
+                    }),
+                    origin: Some([1.2, 3.4, 5.6]),
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [1.2, 3.4, 5.6]),
+                ([1.0, 0.0], [1.2, 4.4, 5.6]),
+                ([0.0, 1.0], [1.2, 3.4, 4.6]),
+                ([2.0, 2.0], [1.2, 5.4, 3.6]),
+                ([-1.0, 0.0], [1.2, 2.4, 5.6]),
+                ([0.0, -1.0], [1.2, 3.4, 6.6]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(plane.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: plane.evaluate({a:?}) = {:?} != {b:?}",
+                        plane.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(plane.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: plane.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        plane.evaluate_inverse(b)
+                    );
+                }
+            }
         }
 
         #[test]
