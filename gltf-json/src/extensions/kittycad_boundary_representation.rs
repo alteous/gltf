@@ -639,6 +639,18 @@ impl Orientation {
     }
 }
 
+impl std::ops::Mul for Orientation {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self as i8) * (rhs as i8) {
+            1 => Self::Same,
+            -1 => Self::Reverse,
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// Index for orientable items.
 ///
 /// The JSON representation is an array of two numbers: the index followed by its orientation.
