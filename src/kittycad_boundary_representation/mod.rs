@@ -10,6 +10,393 @@ pub use curve::{Curve2d, Curve3d};
 #[doc(inline)]
 pub use surface::Surface;
 
+use std::borrow::Cow;
+
+#[derive(Clone, Debug)]
+pub(crate) struct BSpline<'a, T>
+where
+    T: Clone
+        + Copy
+        + Default
+        + std::fmt::Debug
+        + std::ops::Add<T, Output = T>
+        + std::ops::Div<f64, Output = T>
+        + std::ops::Mul<f64, Output = T>
+        + std::ops::Sub<T, Output = T>
+        + 'static,
+    f64: std::ops::Mul<T, Output = T>,
+{
+    pub control_points: Cow<'a, [T]>,
+    pub padded_knot_vector: Cow<'a, [f64]>,
+    pub degree: usize,
+}
+
+impl<T> BSpline<'static, T>
+where
+    T: Clone
+        + Copy
+        + Default
+        + std::fmt::Debug
+        + std::ops::Add<T, Output = T>
+        + std::ops::Div<f64, Output = T>
+        + std::ops::Mul<f64, Output = T>
+        + std::ops::Sub<T, Output = T>
+        + 'static,
+    f64: std::ops::Mul<T, Output = T>,
+{
+    /// Insert a new knot to obtain a new curve.
+    pub fn insert_knot(&mut self, t: f64) {
+        *self = self.with_knot(t);
+    }
+}
+
+impl<'a, T> BSpline<'a, T>
+where
+    T: Clone
+        + Copy
+        + Default
+        + std::fmt::Debug
+        + std::ops::Add<T, Output = T>
+        + std::ops::Div<f64, Output = T>
+        + std::ops::Mul<f64, Output = T>
+        + std::ops::Sub<T, Output = T>
+        + 'static,
+    f64: std::ops::Mul<T, Output = T>,
+{
+    /// First control point.
+    pub fn start(&self) -> T {
+        *self.control_points.first().unwrap()
+    }
+
+    /// Last control point.
+    pub fn end(&self) -> T {
+        *self.control_points.last().unwrap()
+    }
+
+    /// Return the n-th knot.
+    pub fn knot(&self, n: usize) -> f64 {
+        self.padded_knot_vector[self.degree + n]
+    }
+
+    /// Return the canonical knot vector.
+    pub fn knot_vector(&self) -> &[f64] {
+        let num_extra_knots = self.degree;
+        &self.padded_knot_vector[num_extra_knots..(self.padded_knot_vector.len() - num_extra_knots)]
+    }
+
+    /// Find the knot interval containing `t` and its multiplicity if `t` is a knot.
+    pub fn knot_span(&self, t: f64) -> usize {
+        let u = self.knot_vector();
+        u.windows(2)
+            .position(|ui| t >= ui[0] && t < ui[1])
+            .unwrap_or(u.len() - 1)
+    }
+
+    /// Minimum knot value.
+    pub fn min_knot(&self) -> f64 {
+        *self.padded_knot_vector.first().unwrap()
+    }
+
+    /// Maximum knot value.
+    pub fn max_knot(&self) -> f64 {
+        *self.padded_knot_vector.last().unwrap()
+    }
+
+    /// Compute a new curve with the given knot.
+    pub fn with_knot(&self, t: f64) -> BSpline<'static, T> {
+        let d = self.degree;
+        let k = self.knot_span(t);
+        let n = self.control_points.len();
+        let p = |i| self.control_points[i];
+        let u = |i| self.knot(i);
+        let a = |i| (t - u(i)) / (u(i + d) - u(i));
+
+        let mut q = Vec::new(); // new control points
+        let mut i = 0;
+        while i < k + 1 - d {
+            q.push(p(i));
+            i += 1;
+        }
+        for _ in 0..d {
+            q.push(Default::default());
+            i += 1;
+        }
+
+        i -= 1;
+        while i < n {
+            q.push(p(i));
+            i += 1;
+        }
+
+        #[allow(clippy::needless_range_loop)]
+        for i in (k + 1 - d)..=k {
+            let ai = a(i);
+            q[i] = ai * p(i);
+            q[i] = q[i] + (1.0 - ai) * p(i - 1);
+        }
+
+        let mut v = self.padded_knot_vector.clone().into_owned();
+        v.insert(k + d + 1, t);
+
+        BSpline {
+            control_points: q.into(),
+            padded_knot_vector: v.into(),
+            degree: d,
+        }
+    }
+
+    /// Compute this BSpline's derivative.
+    #[allow(unused)]
+    pub fn derivative<'b>(&'b self) -> BSpline<'b, T> {
+        let d = self.degree;
+        let n = self.control_points.len();
+        let m = self.padded_knot_vector.len();
+        let u = &self.padded_knot_vector[d..(m - d)];
+
+        let mut p = self.control_points.clone().into_owned();
+        for i in 0..(n - 1) {
+            let upper = p[i + 1] - p[i];
+            let lower = u[i + 1 + d] - u[i + 1];
+            if lower == 0.0 {
+                p[i] = p[i] * 0.0;
+            } else {
+                p[i] = (d as f64) * upper / lower;
+            }
+        }
+        let _ = p.pop();
+
+        BSpline::<'b, T> {
+            control_points: Cow::from(p),
+            padded_knot_vector: Cow::from(
+                &self.padded_knot_vector[2..(self.padded_knot_vector.len() - 2)],
+            ),
+            degree: d - 1,
+        }
+    }
+
+    /// Evaluate the BSpline function at `t`.
+    pub fn evaluate(&self, t: f64) -> T {
+        if t <= self.min_knot() {
+            self.start()
+        } else if t >= self.max_knot() {
+            self.end()
+        } else {
+            let d = self.degree;
+            let control_points = self.control_points.clone().into_owned();
+            let padded_knot_vector = self.padded_knot_vector.clone().into_owned();
+            let mut copy = BSpline::<'static> {
+                control_points: control_points.into(),
+                padded_knot_vector: padded_knot_vector.into(),
+                degree: d,
+            };
+            for _ in 0..d {
+                copy.insert_knot(t);
+            }
+            let k = copy.knot_span(t);
+            copy.control_points[k - d]
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+    use euler::{dvec2, DVec2};
+
+    #[track_caller]
+    fn assert_dvec2_relative_eq(a: DVec2, b: DVec2) {
+        assert_relative_eq!(a.x, b.x, epsilon = 0.001);
+        assert_relative_eq!(a.y, b.y, epsilon = 0.001);
+    }
+
+    #[test]
+    fn bspline_knot_insertion() {
+        let d = 3;
+        let u = vec![
+            0.0, 0.0, 0.0, //
+            0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 5.0, 5.0, 5.0, //
+            5.0, 5.0, 5.0,
+        ];
+        let p = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        let curve = super::BSpline {
+            control_points: p.into(),
+            padded_knot_vector: u.into(),
+            degree: d,
+        };
+        let t = 2.5;
+        let curve_with_knot = curve.with_knot(t);
+        let q = [1.0, 2.0, 3.0, 23.0 / 6.0, 4.5, 31.0 / 6.0, 6.0, 7.0, 8.0];
+        let v = [
+            0.0, 0.0, 0.0, //
+            0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 2.5, 3.0, 4.0, 5.0, 5.0, 5.0, 5.0, //
+            5.0, 5.0, 5.0,
+        ];
+        assert_eq!(curve.degree, curve_with_knot.degree);
+        for i in 0..q.len() {
+            assert_relative_eq!(q[i], curve_with_knot.control_points[i]);
+        }
+        for i in 0..v.len() {
+            assert_relative_eq!(v[i], curve_with_knot.padded_knot_vector[i]);
+        }
+    }
+
+    #[test]
+    fn bspline_naive_de_boor() {
+        let d = 3;
+        let u = vec![
+            0.0, 0.0, 0.0, //
+            0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, //
+            1.0, 1.0, 1.0,
+        ];
+        let p = vec![
+            dvec2!(-4.0, -4.0),
+            dvec2!(-2.0, 4.0),
+            dvec2!(2.0, -4.0),
+            dvec2!(4.0, 4.0),
+        ];
+        let mut curve = super::BSpline::<'static> {
+            control_points: p.into(),
+            padded_knot_vector: u.into(),
+            degree: d,
+        };
+        let t = 0.5;
+        for _ in 0..d {
+            curve.insert_knot(t);
+        }
+        let k = curve.knot_span(t);
+        assert_relative_eq!(0.0, curve.control_points[k - d].x);
+        assert_relative_eq!(0.0, curve.control_points[k - d].y);
+    }
+
+    fn make_bspline() -> super::BSpline<'static, DVec2> {
+        let d = 3;
+        let u = vec![
+            0.0,
+            0.0,
+            0.0,
+            //
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0 / 3.0,
+            2.0 / 3.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            //
+            1.0,
+            1.0,
+            1.0,
+        ];
+        let p = vec![
+            dvec2!(0.0, 0.0),
+            dvec2!(0.0, 1.0),
+            dvec2!(1.0, 1.0),
+            dvec2!(1.0, 0.0),
+            dvec2!(2.0, 0.0),
+            dvec2!(2.0, 1.0),
+        ];
+        super::BSpline::<'static, DVec2> {
+            control_points: p.into(),
+            padded_knot_vector: u.into(),
+            degree: d,
+        }
+    }
+
+    #[test]
+    fn bspline_evaluate() {
+        let curve = make_bspline();
+        let points = [
+            (0.0, dvec2!(0.0, 0.0)),
+            (0.25, dvec2!(0.52734, 0.91406)),
+            (0.5, dvec2!(1.0, 0.5)),
+            (0.75, dvec2!(1.47266, 0.08594)),
+            (1.0, dvec2!(2.0, 1.0)),
+        ];
+        for (t, x) in points {
+            assert_dvec2_relative_eq(x, curve.evaluate(t));
+        }
+    }
+
+    #[test]
+    fn bspline_derivative() {
+        let curve = make_bspline();
+        let derivative = curve.derivative();
+
+        let control_points = [
+            dvec2!(0.0, 9.0),
+            dvec2!(4.5, 0.0),
+            dvec2!(0.0, -3.0),
+            dvec2!(4.5, 0.0),
+            dvec2!(0.0, 9.0),
+        ];
+        for (a, b) in control_points
+            .into_iter()
+            .zip(derivative.control_points.iter().copied())
+        {
+            assert_dvec2_relative_eq(a, b);
+        }
+
+        let knot_vector = [
+            0.0,
+            0.0,
+            //
+            0.0,
+            1.0 / 3.0,
+            2.0 / 3.0,
+            1.0,
+            //
+            1.0,
+            1.0,
+        ];
+        for (a, b) in knot_vector
+            .into_iter()
+            .zip(derivative.knot_vector().iter().copied())
+        {
+            assert_relative_eq!(a, b);
+        }
+
+        let points = [
+            (0.0, dvec2!(0.0, 9.0)),
+            (0.25, dvec2!(2.95312, -0.28125)),
+            (0.5, dvec2!(1.125, -2.25)),
+            (0.75, dvec2!(2.95312, -0.28125)),
+            (1.0, dvec2!(0.0, 9.0)),
+        ];
+        for (t, dx) in points {
+            assert_dvec2_relative_eq(dx, derivative.evaluate(t));
+        }
+    }
+
+    #[test]
+    fn bspline_offset_domain() {
+        let mut curve = make_bspline();
+        curve.padded_knot_vector = {
+            let mut knot_vector = curve.padded_knot_vector.clone().into_owned();
+            for u in &mut knot_vector {
+                *u += 1.0;
+            }
+            knot_vector.into()
+        };
+
+        let derivative = curve.derivative();
+
+        let points = [
+            (1.0, dvec2!(0.0, 0.0), dvec2!(0.0, 9.0)),
+            (1.25, dvec2!(0.52734, 0.91406), dvec2!(2.95312, -0.28125)),
+            (1.5, dvec2!(1.0, 0.5), dvec2!(1.125, -2.25)),
+            (1.75, dvec2!(1.47266, 0.08594), dvec2!(2.95312, -0.28125)),
+            (2.0, dvec2!(2.0, 1.0), dvec2!(0.0, 9.0)),
+        ];
+        for (t, x, dx) in points {
+            assert_dvec2_relative_eq(x, curve.evaluate(t));
+            assert_dvec2_relative_eq(dx, derivative.evaluate(t));
+        }
+    }
+}
+
 fn slice_truncated<T>(slice: &[T], range: std::ops::Range<usize>) -> &[T] {
     &slice[range.start.min(slice.len())..range.end.min(slice.len())]
 }
@@ -281,11 +668,12 @@ pub mod curve {
             &self.json.knot_vector
         }
 
-        /// Returns the order of the basis splines.
-        ///
-        /// # Notes
-        ///
-        /// The degree of the basis splines is one less than the order.
+        /// Greatest degree of the basis splines.
+        pub fn degree(&self) -> u32 {
+            self.json.order - 1
+        }
+
+        /// Greatest order of the basis splines.
         pub fn order(&self) -> u32 {
             self.json.order
         }
@@ -301,64 +689,37 @@ pub mod curve {
     impl<'a> Nurbs3d<'a> {
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
-            // Min/max knot value
-            let (umin, umax) = {
-                let u = self.knot_vector();
-                (*u.first().unwrap(), *u.last().unwrap())
-            };
-
-            if t == umin {
-                self.start()
-            } else if t == umax {
-                self.end()
+            let u = self.padded_knot_vector();
+            let w = self.weights();
+            let d = self.degree() as usize;
+            if w.is_empty() {
+                let p = self
+                    .control_points()
+                    .iter()
+                    .map(|p| DVec3::from(*p))
+                    .collect::<Vec<_>>();
+                let bspline = super::BSpline::<DVec3> {
+                    control_points: p.into(),
+                    padded_knot_vector: (&u).into(),
+                    degree: d,
+                };
+                bspline.evaluate(t).into()
             } else {
-                // Degree
-                let d = (self.json.order - 1) as usize;
-
-                // Padded knot vector
-                let mut u = self.knot_vector().to_vec();
-                for _ in 0..d {
-                    u.insert(0, umin);
-                    u.push(umax);
-                }
-
-                // Index of knot interval
-                let k = u
-                    .windows(2)
-                    .position(|ui| t >= ui[0] && t < ui[1])
-                    .expect("t does not lie between any knot");
-
-                // Multiplicity
-                let m = u
-                    .windows(2)
-                    .rev()
-                    .position(|ui| t >= ui[0] && t < ui[1])
-                    .map(|ui| k - ui)
-                    .expect("t does not lie between any knot");
-
-                // Weight iterator.
-                let weights = self.weights().iter().copied().chain(std::iter::repeat(1.0));
-
-                // New control points
-                let mut p = self
+                // Weighted control points.
+                let pw = self
                     .control_points()
                     .iter()
                     .copied()
-                    .zip(weights)
+                    .zip(w.iter().copied())
                     .map(|([x, y, z], w)| DVec4::new(x * w, y * w, z * w, w))
                     .collect::<Vec<_>>();
-
-                let h = d - m;
-                for r in 1..=h {
-                    for i in (r..=h).rev() {
-                        let upper = t - u[k + i - d];
-                        let lower = u[k + i + 1 - r] - u[k + i - d];
-                        let a = if lower == 0.0 { 0.0 } else { upper / lower };
-                        p[i] = (1.0 - a) * p[i - 1] + a * p[i];
-                    }
-                }
-
-                (p[d].xyz() / p[d].w).into()
+                let bspline = super::BSpline::<DVec4> {
+                    control_points: (&pw).into(),
+                    padded_knot_vector: (&u).into(),
+                    degree: d,
+                };
+                let point = bspline.evaluate(t);
+                (point.xyz() / point.w).into()
             }
         }
 
@@ -387,11 +748,32 @@ pub mod curve {
             &self.json.knot_vector
         }
 
-        /// Returns the order of the basis splines.
-        ///
-        /// # Notes
-        ///
-        /// The degree of the basis splines is one less than the order.
+        /// Minimum knot value.
+        fn umin(&self) -> f64 {
+            *self.knot_vector().first().unwrap()
+        }
+
+        /// Maximum knot value.
+        fn umax(&self) -> f64 {
+            *self.knot_vector().last().unwrap()
+        }
+
+        /// Padded knot vector.
+        fn padded_knot_vector(&self) -> Vec<f64> {
+            let mut u = self.knot_vector().to_vec();
+            for _ in 0..(self.order() - 1) {
+                u.insert(0, self.umin());
+                u.push(self.umax());
+            }
+            u
+        }
+
+        /// Greatest degree of the basis splines.
+        pub fn degree(&self) -> u32 {
+            self.json.order - 1
+        }
+
+        /// Greatest order of the basis splines.
         pub fn order(&self) -> u32 {
             self.json.order
         }
@@ -556,7 +938,7 @@ pub mod curve {
                 if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.1) {
                     panic!(
                         "test_points[{i}]: curve.evaluate({a:?}) = {:?} != {b:?}",
-                        curve.evaluate(a)
+                        curve.evaluate(a),
                     );
                 }
             }
