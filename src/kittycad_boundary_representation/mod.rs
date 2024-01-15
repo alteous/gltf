@@ -687,6 +687,23 @@ pub mod curve {
     }
 
     impl<'a> Nurbs3d<'a> {
+        fn as_bspline(&self) -> super::BSpline<'static, DVec4> {
+            // Weighted control points.
+            let w = self.weights();
+            let pw = self
+                .control_points()
+                .iter()
+                .copied()
+                .zip(w.iter().copied())
+                .map(|([x, y, z], w)| DVec4::new(x * w, y * w, z * w, w))
+                .collect::<Vec<_>>();
+            super::BSpline::<'static, DVec4> {
+                control_points: (pw).into(),
+                padded_knot_vector: self.padded_knot_vector().into(),
+                degree: self.degree() as usize,
+            }
+        }
+
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
             let u = self.padded_knot_vector();
@@ -705,22 +722,43 @@ pub mod curve {
                 };
                 bspline.evaluate(t).into()
             } else {
-                // Weighted control points.
-                let pw = self
-                    .control_points()
-                    .iter()
-                    .copied()
-                    .zip(w.iter().copied())
-                    .map(|([x, y, z], w)| DVec4::new(x * w, y * w, z * w, w))
-                    .collect::<Vec<_>>();
-                let bspline = super::BSpline::<DVec4> {
-                    control_points: (&pw).into(),
-                    padded_knot_vector: (&u).into(),
-                    degree: d,
-                };
+                let bspline = self.as_bspline();
                 let point = bspline.evaluate(t);
                 (point.xyz() / point.w).into()
             }
+        }
+
+        /// Evaluate the curve derivative at parameter value `t`.
+        pub fn evaluate_first_derivative(&self, t: f64) -> [f64; 3] {
+            let d = self.degree() as usize;
+            let u = self.padded_knot_vector();
+            let c = |t| DVec3::from(self.evaluate(t));
+
+            let acurve = super::BSpline::<DVec3> {
+                control_points: self
+                    .control_points()
+                    .iter()
+                    .zip(self.weights().iter().copied())
+                    .map(|(p, w)| DVec3::from(*p) * w)
+                    .collect::<Vec<_>>()
+                    .into(),
+                padded_knot_vector: u.clone().into(),
+                degree: d,
+            };
+            let da_dt_curve = acurve.derivative();
+            let da_dt = |t| da_dt_curve.evaluate(t);
+
+            let wcurve = super::BSpline::<f64> {
+                control_points: self.weights().to_vec().into(),
+                padded_knot_vector: u.clone().into(),
+                degree: d,
+            };
+            let w = |t| wcurve.evaluate(t);
+            let dw_dt_curve = wcurve.derivative();
+            let dw_dt = |t| dw_dt_curve.evaluate(t);
+
+            let point = (da_dt(t) - dw_dt(t) * c(t)) / w(t);
+            point.into()
         }
 
         /// Returns the curve start point, i.e., the first control point.
@@ -761,7 +799,7 @@ pub mod curve {
         /// Padded knot vector.
         fn padded_knot_vector(&self) -> Vec<f64> {
             let mut u = self.knot_vector().to_vec();
-            for _ in 0..(self.order() - 1) {
+            for _ in 0..self.degree() {
                 u.insert(0, self.umin());
                 u.push(self.umax());
             }
@@ -927,18 +965,24 @@ pub mod curve {
             let curve = super::Nurbs3d { json: &inner };
 
             let test_points = [
-                (0.0, [1.0, 0.0, 0.0]),
-                (0.25, [(PI * 0.125).cos(), (PI * 0.125).sin(), 0.0]),
-                (0.5, [(PI * 0.25).cos(), (PI * 0.25).sin(), 0.0]),
-                (0.75, [(PI * 0.375).cos(), (PI * 0.375).sin(), 0.0]),
-                (1.0, [0.0, 1.0, 0.0]),
+                (0.0, [1.0, 0.0, 0.0], [0.00000, 1.41421, 0.0]),
+                (0.25, [0.92979, 0.36809, 0.0], [-0.58480, 1.47716, 0.0]),
+                (0.5, [0.70711, 0.70711, 0.0], [-1.17157, 1.17157, 0.0]),
+                (0.75, [0.36809, 0.92979, 0.0], [-1.47716, 0.58480, 0.0]),
+                (1.0, [0.0, 1.0, 0.0], [-1.41421, 0.0, 0.0]),
             ];
 
-            for (i, (a, b)) in test_points.iter().copied().enumerate() {
-                if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.1) {
+            for (i, (t, x, dx)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(curve.evaluate(t), x, epsilon = 0.01) {
                     panic!(
-                        "test_points[{i}]: curve.evaluate({a:?}) = {:?} != {b:?}",
-                        curve.evaluate(a),
+                        "test_points[{i}]: curve.evaluate({t:?}) = {:?} != {x:?}",
+                        curve.evaluate(t),
+                    );
+                }
+                if !all_relative_eq!(curve.evaluate_first_derivative(t), dx, epsilon = 0.01) {
+                    panic!(
+                        "test_points[{i}]: curve.evaluate_first_derivative({t:?}) = {:?} != {dx:?}",
+                        curve.evaluate_first_derivative(t),
                     );
                 }
             }
@@ -968,7 +1012,7 @@ pub mod curve {
             ];
 
             for (i, (a, b)) in test_points.iter().copied().enumerate() {
-                if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.1) {
+                if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.001) {
                     panic!(
                         "test_points[{i}]: curve.evaluate({a:?}) = {:.2?} != {b:.2?}",
                         curve.evaluate(a)
