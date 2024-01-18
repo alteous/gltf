@@ -704,6 +704,11 @@ pub mod curve {
             }
         }
 
+        /// Wrapper constructor.
+        pub fn new(json: &kcad::curve::Nurbs3d) -> Nurbs3d {
+            Nurbs3d { json }
+        }
+
         /// Evaluate the curve at parameter value `t`.
         pub fn evaluate(&self, t: f64) -> [f64; 3] {
             let u = self.padded_knot_vector();
@@ -759,6 +764,63 @@ pub mod curve {
 
             let point = (da_dt(t) - dw_dt(t) * c(t)) / w(t);
             point.into()
+        }
+
+        /// Find the parameter value `t` closest to the given point.
+        pub fn evaluate_inverse(&self, xyz: [f64; 3]) -> f64 {
+            let d = self.degree() as usize;
+            let u = self.padded_knot_vector();
+            let c = |t| DVec3::from(self.evaluate(t));
+
+            let acurve = super::BSpline::<DVec3> {
+                control_points: self
+                    .control_points()
+                    .iter()
+                    .zip(self.weights().iter().copied())
+                    .map(|(p, w)| DVec3::from(*p) * w)
+                    .collect::<Vec<_>>()
+                    .into(),
+                padded_knot_vector: u.clone().into(),
+                degree: d,
+            };
+            let da_dt_curve = acurve.derivative();
+            let da_dt = |t| da_dt_curve.evaluate(t);
+            let d2a_dt2_curve = da_dt_curve.derivative();
+            let d2a_dt2 = |t| d2a_dt2_curve.evaluate(t);
+
+            let wcurve = super::BSpline::<f64> {
+                control_points: self.weights().to_vec().into(),
+                padded_knot_vector: u.clone().into(),
+                degree: d,
+            };
+            let w = |t| wcurve.evaluate(t);
+            let dw_dt_curve = wcurve.derivative();
+            let dw_dt = |t| dw_dt_curve.evaluate(t);
+
+            let dc_dt = |t| (da_dt(t) - dw_dt(t) * c(t)) / w(t);
+            let d2c_dt2 = |t| (d2a_dt2(t) - 2.0 * dw_dt(t) * dc_dt(t) - w(t) * c(t)) / w(t);
+            let r = |t| c(t) - DVec3::from(xyz);
+
+            let cosine_tolerance = 0.001;
+            let squared_distance_tolerance = 0.001 * 0.001;
+            let max_iterations = 100;
+            let mut t = 0.5 * (self.umin() + self.umax());
+            for _ in 0..max_iterations {
+                t -= dc_dt(t).dot(r(t)) / (d2c_dt2(t).dot(r(t)) + dc_dt(t).dot(dc_dt(t)));
+                let squared_distance = r(t).squared_length();
+                let cosine = (dc_dt(t).dot(r(t)) / (dc_dt(t).length() * r(t).length())).abs();
+                if squared_distance < squared_distance_tolerance && cosine < cosine_tolerance {
+                    break;
+                } else if t < self.umin() {
+                    t = self.umin();
+                    break;
+                } else if t > self.umax() {
+                    t = self.umax();
+                    break;
+                }
+            }
+
+            t
         }
 
         /// Returns the curve start point, i.e., the first control point.
@@ -985,6 +1047,11 @@ pub mod curve {
                         curve.evaluate_first_derivative(t),
                     );
                 }
+                assert!(approx::relative_eq!(
+                    t,
+                    curve.evaluate_inverse(x),
+                    epsilon = 0.0001
+                ));
             }
         }
 
