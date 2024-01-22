@@ -149,6 +149,14 @@ where
     #[allow(unused)]
     pub fn derivative<'b>(&'b self) -> BSpline<'b, T> {
         let d = self.degree;
+        if d <= 1 {
+            return BSpline::<'b, T> {
+                control_points: Vec::new().into(),
+                padded_knot_vector: Vec::new().into(),
+                degree: 0,
+            };
+        }
+
         let n = self.control_points.len();
         let m = self.padded_knot_vector.len();
         let u = &self.padded_knot_vector[d..(m - d)];
@@ -176,7 +184,9 @@ where
 
     /// Evaluate the BSpline function at `t`.
     pub fn evaluate(&self, t: f64) -> T {
-        if t <= self.min_knot() {
+        if self.degree == 0 {
+            Default::default()
+        } else if t <= self.min_knot() {
             self.start()
         } else if t >= self.max_knot() {
             self.end()
@@ -405,7 +415,7 @@ fn slice_truncated<T>(slice: &[T], range: std::ops::Range<usize>) -> &[T] {
 /// beginning and ending with the endpoints themselves.
 ///
 /// ```
-/// # use IntervalExt;
+/// # use gltf::kittycad_boundary_representation::{Interval, IntervalExt};
 /// let interval = Interval(0.0, 4.0);
 /// let mut iter = interval.steps(4);
 /// assert_eq!(iter.next(), Some(0.0));
@@ -441,11 +451,36 @@ impl Iterator for Steps {
     }
 }
 
+/// Iterates over `n` equally spaced steps, excluding the endpoints.
+///
+/// ```
+/// # use gltf::kittycad_boundary_representation::{Interval, IntervalExt};
+/// let interval = Interval(0.0, 4.0);
+/// let mut iter = interval.interior_steps(4);
+/// assert_eq!(iter.next(), Some(1.0));
+/// assert_eq!(iter.next(), Some(2.0));
+/// assert_eq!(iter.next(), Some(3.0));
+/// assert_eq!(iter.next(), None);
+/// ```
+#[derive(Clone, Debug)]
+pub struct InteriorSteps(pub(crate) std::iter::Skip<std::iter::Take<Steps>>);
+
+impl Iterator for InteriorSteps {
+    type Item = f64;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
 /// Extra functions for the `Interval` type.
 pub trait IntervalExt {
     /// Iterates over `n` equally spaced steps between the interval endpoints,
     /// beginning and ending with the endpoints themselves.
     fn steps(&self, n: usize) -> Steps;
+
+    /// Iterates over `n` equally spaced steps, excluding the endpoints.
+    fn interior_steps(&self, n: usize) -> InteriorSteps {
+        InteriorSteps(self.steps(n).take(n).skip(1))
+    }
 }
 
 impl IntervalExt for Interval {
@@ -694,7 +729,7 @@ pub mod curve {
                 .control_points()
                 .iter()
                 .copied()
-                .zip(w.iter().copied())
+                .zip(w.iter().copied().chain(std::iter::repeat(1.0)))
                 .map(|([x, y, z], w)| DVec4::new(x * w, y * w, z * w, w))
                 .collect::<Vec<_>>();
             super::BSpline::<'static, DVec4> {
@@ -743,7 +778,7 @@ pub mod curve {
                 control_points: self
                     .control_points()
                     .iter()
-                    .zip(self.weights().iter().copied())
+                    .zip(self.weights().iter().copied().chain(std::iter::repeat(1.0)))
                     .map(|(p, w)| DVec3::from(*p) * w)
                     .collect::<Vec<_>>()
                     .into(),
@@ -766,9 +801,63 @@ pub mod curve {
             point.into()
         }
 
-        /// Find the parameter value `t` closest to the given point.
-        pub fn evaluate_inverse(&self, xyz: [f64; 3]) -> f64 {
+        fn evaluate_linear_inverse_non_weighted(&self, in_xyz: [f64; 3]) -> f64 {
+            // Tolerance.
+            let tolerance = 0.001;
+
+            let u = self.knot_vector();
+            let p = self.control_points();
+
+            for (i, pi) in p.iter().enumerate() {
+                if pi
+                    .iter()
+                    .copied()
+                    .zip(in_xyz.iter().copied())
+                    .all(|(a, b)| (a - b).abs() < tolerance)
+                {
+                    return u[i + 1];
+                }
+            }
+
+            let xyz = DVec3::from(in_xyz);
+            let pi = p
+                .windows(2)
+                .position(|p| {
+                    let p0 = DVec3::from(p[0]);
+                    let p1 = DVec3::from(p[1]);
+                    let r = |a: DVec3, b: DVec3| (b - a).length();
+                    (r(p0, xyz) + r(xyz, p1) - r(p0, p1)).abs() < 0.001
+                })
+                .unwrap_or(0);
+            let ui = pi + 1;
+
+            // C(u1) == p0
+            let u1 = u[ui];
+            let p0 = p[ui - 1];
+
+            // C(u2) == p1
+            let u2 = u[ui + 1];
+            let p1 = p[ui];
+
+            // Pick one component to solve for.
+            let x = (0..3)
+                .find(|xi| p0[*xi] != in_xyz[*xi] && in_xyz[*xi] != p1[*xi] && p0[*xi] != p1[*xi])
+                .unwrap_or(0);
+
+            // xx lies between x0 and x1.
+            let x0 = p0[x];
+            let xx = in_xyz[x];
+            let x1 = p1[x];
+
+            ((u2 - u1) * xx - u2 * x0 + u1 * x1) / (x1 - x0)
+        }
+
+        fn evaluate_inverse_non_weighted(&self, xyz: [f64; 3], tstart: f64) -> f64 {
             let d = self.degree() as usize;
+            if d == 1 {
+                return self.evaluate_linear_inverse_non_weighted(xyz);
+            }
+
             let u = self.padded_knot_vector();
             let c = |t| DVec3::from(self.evaluate(t));
 
@@ -776,7 +865,118 @@ pub mod curve {
                 control_points: self
                     .control_points()
                     .iter()
-                    .zip(self.weights().iter().copied())
+                    .map(|p| DVec3::from(*p))
+                    .collect::<Vec<_>>()
+                    .into(),
+                padded_knot_vector: u.clone().into(),
+                degree: d,
+            };
+            let da_dt_curve = acurve.derivative();
+            let da_dt = |t| da_dt_curve.evaluate(t);
+            let d2a_dt2_curve = da_dt_curve.derivative();
+            let d2a_dt2 = |t| d2a_dt2_curve.evaluate(t);
+
+            let r = |t| c(t) - DVec3::from(xyz);
+
+            let cosine_tolerance = 0.001;
+            let squared_distance_tolerance = 0.001 * 0.001;
+            let max_iterations = 100;
+            let mut t = tstart;
+            for _ in 0..max_iterations {
+                t -= da_dt(t).dot(r(t)) / (d2a_dt2(t).dot(r(t)) + da_dt(t).dot(da_dt(t)));
+
+                let squared_distance = r(t).squared_length();
+                let cosine = (da_dt(t).dot(r(t)) / (da_dt(t).length() * r(t).length())).abs();
+                if squared_distance < squared_distance_tolerance && cosine < cosine_tolerance {
+                    break;
+                } else if t < self.umin() {
+                    t = self.umin();
+                    break;
+                } else if t > self.umax() {
+                    t = self.umax();
+                    break;
+                }
+            }
+
+            t
+        }
+
+        fn evaluate_linear_inverse_weighted(&self, in_xyz: [f64; 3]) -> f64 {
+            // Tolerance.
+            let tolerance = 0.001;
+
+            let u = self.knot_vector();
+            let p = self.control_points();
+            let w = |i: usize| self.weights().get(i).copied().unwrap_or(1.0);
+
+            for (i, pi) in p.iter().enumerate() {
+                if pi
+                    .iter()
+                    .copied()
+                    .zip(in_xyz.iter().copied())
+                    .all(|(a, b)| (a - b).abs() < tolerance)
+                {
+                    return u[i + 1];
+                }
+            }
+
+            let xyz = DVec3::from(in_xyz);
+            let pi = p
+                .windows(2)
+                .position(|p| {
+                    let p0 = DVec3::from(p[0]);
+                    let p1 = DVec3::from(p[1]);
+                    let r = |a: DVec3, b: DVec3| (b - a).length();
+                    (r(p0, xyz) + r(xyz, p1) - r(p0, p1)).abs() < 0.001
+                })
+                .unwrap_or(0);
+            let ui = pi + 1;
+
+            // C(u1) == p0
+            let u1 = u[ui];
+            let p0 = p[ui - 1];
+
+            // C(u2) == p1
+            let u2 = u[ui + 1];
+            let p1 = p[ui];
+
+            // Pick one component to solve for.
+            let xi = (0..3)
+                .find(|xi| p0[*xi] != in_xyz[*xi] && in_xyz[*xi] != p1[*xi] && p0[*xi] != p1[*xi])
+                .unwrap_or(0);
+
+            // x lies between x0 and x1.
+            let x0 = p0[xi];
+            let w0 = w(ui - 1);
+            let xw0 = x0 * w0;
+            let x = in_xyz[xi];
+            let x1 = p1[xi];
+            let w1 = w(ui);
+            let xw1 = x1 * w1;
+
+            let upper = u2 * xw0 - u1 * xw1 + x * (u1 * w1 - u2 * w0);
+            let lower = x * (w1 - w0) + xw0 - xw1;
+            upper / lower
+        }
+
+        fn evaluate_inverse_weighted(&self, xyz: [f64; 3], tstart: f64) -> f64 {
+            let d = self.degree() as usize;
+            if d == 1 {
+                if self.weights().is_empty() {
+                    return self.evaluate_linear_inverse_non_weighted(xyz);
+                } else {
+                    return self.evaluate_linear_inverse_weighted(xyz);
+                }
+            }
+
+            let u = self.padded_knot_vector();
+            let c = |t| DVec3::from(self.evaluate(t));
+
+            let acurve = super::BSpline::<DVec3> {
+                control_points: self
+                    .control_points()
+                    .iter()
+                    .zip(self.weights().iter().copied().chain(std::iter::repeat(1.0)))
                     .map(|(p, w)| DVec3::from(*p) * w)
                     .collect::<Vec<_>>()
                     .into(),
@@ -789,7 +989,14 @@ pub mod curve {
             let d2a_dt2 = |t| d2a_dt2_curve.evaluate(t);
 
             let wcurve = super::BSpline::<f64> {
-                control_points: self.weights().to_vec().into(),
+                control_points: self
+                    .weights()
+                    .iter()
+                    .copied()
+                    .chain(std::iter::repeat(1.0))
+                    .take(self.control_points().len())
+                    .collect::<Vec<_>>()
+                    .into(),
                 padded_knot_vector: u.clone().into(),
                 degree: d,
             };
@@ -804,7 +1011,7 @@ pub mod curve {
             let cosine_tolerance = 0.001;
             let squared_distance_tolerance = 0.001 * 0.001;
             let max_iterations = 100;
-            let mut t = 0.5 * (self.umin() + self.umax());
+            let mut t = tstart;
             for _ in 0..max_iterations {
                 t -= dc_dt(t).dot(r(t)) / (d2c_dt2(t).dot(r(t)) + dc_dt(t).dot(dc_dt(t)));
                 let squared_distance = r(t).squared_length();
@@ -821,6 +1028,16 @@ pub mod curve {
             }
 
             t
+        }
+
+        /// Find the parameter value `t` closest to the given point.
+        pub fn evaluate_inverse(&self, xyz: [f64; 3], hint: Option<f64>) -> f64 {
+            let tstart = hint.unwrap_or_else(|| 0.5 * (self.umin() + self.umax()));
+            if self.weights().is_empty() {
+                self.evaluate_inverse_non_weighted(xyz, tstart)
+            } else {
+                self.evaluate_inverse_weighted(xyz, tstart)
+            }
         }
 
         /// Returns the curve start point, i.e., the first control point.
@@ -1049,7 +1266,7 @@ pub mod curve {
                 }
                 assert!(approx::relative_eq!(
                     t,
-                    curve.evaluate_inverse(x),
+                    curve.evaluate_inverse(x, None),
                     epsilon = 0.0001
                 ));
             }
@@ -1085,6 +1302,122 @@ pub mod curve {
                         curve.evaluate(a)
                     );
                 }
+            }
+        }
+
+        #[test]
+        fn evaluate_nurbs_3d_linear_non_rational() {
+            let inner = kcad_json::curve::Nurbs3d {
+                control_points: vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                weights: vec![],
+                knot_vector: vec![0.0, 0.0, 1.0, 1.0],
+                order: 2,
+            };
+            let curve = super::Nurbs3d { json: &inner };
+
+            let test_points = [
+                (0.0, [1.0, 0.0, 0.0]),
+                (0.25, [0.75, 0.25, 0.0]),
+                (0.5, [0.5, 0.5, 0.0]),
+                (0.75, [0.25, 0.75, 0.0]),
+                (1.0, [0.0, 1.0, 0.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.001) {
+                    panic!(
+                        "test_points[{i}]: curve.evaluate({a:?}) = {:.2?} != {b:.2?}",
+                        curve.evaluate(a)
+                    );
+                }
+                approx::assert_relative_eq!(a, curve.evaluate_inverse(b, None));
+            }
+        }
+
+        #[test]
+        fn evaluate_nurbs_3d_polyline() {
+            let inner = kcad_json::curve::Nurbs3d {
+                control_points: vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                weights: vec![],
+                knot_vector: vec![0.0, 0.0, 0.5, 1.0, 1.0],
+                order: 2,
+            };
+            let curve = super::Nurbs3d { json: &inner };
+
+            let test_points = [
+                (0.0, [1.0, 0.0, 0.0]),
+                (0.25, [0.5, 0.5, 0.0]),
+                (0.5, [0.0, 1.0, 0.0]),
+                (0.75, [0.0, 0.5, 0.5]),
+                (1.0, [0.0, 0.0, 1.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.001) {
+                    panic!(
+                        "test_points[{i}]: curve.evaluate({a:?}) = {:.2?} != {b:.2?}",
+                        curve.evaluate(a)
+                    );
+                }
+                approx::assert_relative_eq!(a, curve.evaluate_inverse(b, None));
+            }
+        }
+
+        #[test]
+        fn evaluate_nurbs_3d_rational_polyline() {
+            let inner = kcad_json::curve::Nurbs3d {
+                control_points: vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                weights: vec![1.0, 3.0, 1.0],
+                knot_vector: vec![0.0, 0.0, 0.5, 1.0, 1.0],
+                order: 2,
+            };
+            let curve = super::Nurbs3d { json: &inner };
+
+            let test_points = [
+                (0.0, [1.0, 0.0, 0.0]),
+                (0.25, [0.25, 0.75, 0.0]),
+                (0.5, [0.0, 1.0, 0.0]),
+                (0.75, [0.0, 0.75, 0.25]),
+                (1.0, [0.0, 0.0, 1.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.001) {
+                    panic!(
+                        "test_points[{i}]: curve.evaluate({a:?}) = {:.2?} != {b:.2?}",
+                        curve.evaluate(a)
+                    );
+                }
+                approx::assert_relative_eq!(a, curve.evaluate_inverse(b, None));
+            }
+        }
+
+        #[test]
+        fn evaluate_nurbs_3d_bspline() {
+            let inner = kcad_json::curve::Nurbs3d {
+                control_points: vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                weights: vec![1.0, 3.0, 1.0],
+                knot_vector: vec![0.0, 0.0, 0.5, 1.0, 1.0],
+                order: 2,
+            };
+            let curve = super::Nurbs3d { json: &inner };
+
+            let test_points = [
+                (0.0, [1.0, 0.0, 0.0]),
+                (0.25, [0.25, 0.75, 0.0]),
+                (0.5, [0.0, 1.0, 0.0]),
+                (0.75, [0.0, 0.75, 0.25]),
+                (1.0, [0.0, 0.0, 1.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(curve.evaluate(a), b, epsilon = 0.001) {
+                    panic!(
+                        "test_points[{i}]: curve.evaluate({a:?}) = {:.2?} != {b:.2?}",
+                        curve.evaluate(a)
+                    );
+                }
+                approx::assert_relative_eq!(a, curve.evaluate_inverse(b, None));
             }
         }
 
@@ -1146,6 +1479,7 @@ pub mod curve {
 
 /// Surfaces.
 pub mod surface {
+    use super::Interval;
     use euler::DVec3;
     use json::extensions::kittycad_boundary_representation as kcad;
 
@@ -1363,6 +1697,16 @@ pub mod surface {
     }
 
     impl<'a> Nurbs<'a> {
+        /// Minimum and maximum values of `u` and `v` respectively.
+        pub fn domain(&self) -> [Interval; 2] {
+            let (uknots, vknots) = self.knot_vectors();
+            let umin = *uknots.first().unwrap();
+            let umax = *uknots.last().unwrap();
+            let vmin = *vknots.first().unwrap();
+            let vmax = *vknots.last().unwrap();
+            [Interval(umin, umax), Interval(vmin, vmax)]
+        }
+
         /// Returns the matrix of control points.
         pub fn control_points(&self) -> &[[f64; 3]] {
             &self.json.control_points
