@@ -1,86 +1,95 @@
-use crate::validation::{Checked, Error, USize64, Validate};
+use crate::validation::{Error, USize64, Validate};
 use crate::{buffer, extensions, Extras, Index, Path, Root};
 use gltf_derive::Validate;
-use serde::{de, ser};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fmt;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 /// The component data type.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize_repr, Serialize_repr)]
+#[repr(u32)]
 pub enum ComponentType {
     /// Corresponds to `GL_BYTE`.
-    I8 = 1,
+    I8 = 5120,
     /// Corresponds to `GL_UNSIGNED_BYTE`.
-    U8,
+    U8 = 5121,
     /// Corresponds to `GL_SHORT`.
-    I16,
+    I16 = 5122,
     /// Corresponds to `GL_UNSIGNED_SHORT`.
-    U16,
+    U16 = 5123,
     /// Corresponds to `GL_UNSIGNED_INT`.
-    U32,
+    U32 = 5125,
     /// Corresponds to `GL_FLOAT`.
-    F32,
+    F32 = 5126,
+}
+crate::trivial_impl_validate!(ComponentType);
+
+impl From<sparse::IndexType> for ComponentType {
+    fn from(value: sparse::IndexType) -> Self {
+        match value {
+            sparse::IndexType::U8 => ComponentType::U8,
+            sparse::IndexType::U16 => ComponentType::U16,
+            sparse::IndexType::U32 => ComponentType::U32,
+        }
+    }
 }
 
 /// Specifies whether an attribute, vector, or matrix.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Type {
     /// Scalar quantity.
+    #[serde(rename = "SCALAR")]
     Scalar = 1,
     /// 2D vector.
+    #[serde(rename = "VEC2")]
     Vec2,
     /// 3D vector.
+    #[serde(rename = "VEC3")]
     Vec3,
     /// 4D vector.
+    #[serde(rename = "VEC4")]
     Vec4,
     /// 2x2 matrix.
+    #[serde(rename = "MAT2")]
     Mat2,
     /// 3x3 matrix.
+    #[serde(rename = "MAT3")]
     Mat3,
     /// 4x4 matrix.
+    #[serde(rename = "MAT4")]
     Mat4,
 }
-
-/// Corresponds to `GL_BYTE`.
-pub const BYTE: u32 = 5120;
-
-/// Corresponds to `GL_UNSIGNED_BYTE`.
-pub const UNSIGNED_BYTE: u32 = 5121;
-
-/// Corresponds to `GL_SHORT`.
-pub const SHORT: u32 = 5122;
-
-/// Corresponds to `GL_UNSIGNED_SHORT`.
-pub const UNSIGNED_SHORT: u32 = 5123;
-
-/// Corresponds to `GL_UNSIGNED_INT`.
-pub const UNSIGNED_INT: u32 = 5125;
-
-/// Corresponds to `GL_FLOAT`.
-pub const FLOAT: u32 = 5126;
-
-/// All valid generic vertex attribute component types.
-pub const VALID_COMPONENT_TYPES: &[u32] = &[
-    BYTE,
-    UNSIGNED_BYTE,
-    SHORT,
-    UNSIGNED_SHORT,
-    UNSIGNED_INT,
-    FLOAT,
-];
-
-/// All valid index component types.
-pub const VALID_INDEX_TYPES: &[u32] = &[UNSIGNED_BYTE, UNSIGNED_SHORT, UNSIGNED_INT];
-
-/// All valid accessor types.
-pub const VALID_ACCESSOR_TYPES: &[&str] =
-    &["SCALAR", "VEC2", "VEC3", "VEC4", "MAT2", "MAT3", "MAT4"];
+crate::trivial_impl_validate!(Type);
 
 /// Contains data structures for sparse storage.
 pub mod sparse {
     use super::*;
     use crate::extensions;
+
+    /// Data type specific to sparse indices.
+    #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+    #[repr(u32)]
+    pub enum IndexType {
+        /// Corresponds to `GL_UNSIGNED_BYTE`.
+        U8 = super::ComponentType::U8 as u32,
+        /// Corresponds to `GL_UNSIGNED_SHORT`.
+        U16 = super::ComponentType::U16 as u32,
+        /// Corresponds to `GL_UNSIGNED_INT`.
+        U32 = super::ComponentType::U32 as u32,
+    }
+    crate::trivial_impl_validate!(IndexType);
+
+    impl IndexType {
+        /// Returns the number of bytes this value represents.
+        pub fn size(self) -> usize {
+            super::ComponentType::from(self).size()
+        }
+
+        /// Returns the corresponding `GLenum`.
+        pub fn as_gl_enum(self) -> u32 {
+            super::ComponentType::from(self).as_gl_enum()
+        }
+    }
 
     /// Indices of those attributes that deviate from their initialization value.
     #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
@@ -98,7 +107,7 @@ pub mod sparse {
 
         /// The data type of each index.
         #[serde(rename = "componentType")]
-        pub component_type: Checked<IndexComponentType>,
+        pub index_type: IndexType,
 
         /// Extension specific data.
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -191,7 +200,7 @@ pub struct Accessor {
 
     /// The data type of components in the attribute.
     #[serde(rename = "componentType")]
-    pub component_type: Checked<GenericComponentType>,
+    pub component_type: ComponentType,
 
     /// Extension specific data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -205,7 +214,7 @@ pub struct Accessor {
 
     /// Specifies if the attribute is a scalar, vector, or matrix.
     #[serde(rename = "type")]
-    pub type_: Checked<Type>,
+    pub type_: Type,
 
     /// Minimum value of each component in this attribute.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -237,10 +246,12 @@ impl Validate for Accessor {
         P: Fn() -> Path,
         R: FnMut(&dyn Fn() -> Path, Error),
     {
-        if self.sparse.is_none() && self.buffer_view.is_none() {
+        if self.sparse.is_none() {
             // If sparse is missing, then bufferView must be present. Report that bufferView is
             // missing since it is the more common one to require.
-            report(&|| path().field("bufferView"), Error::Missing);
+            if self.buffer_view.is_none() {
+                report(&|| path().field("bufferView"), Error::Missing);
+            }
         }
 
         self.buffer_view
@@ -269,161 +280,19 @@ fn is_normalized_default(b: &bool) -> bool {
     !*b
 }
 
-/// The data type of an index.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct IndexComponentType(pub ComponentType);
-
-/// The data type of a generic vertex attribute.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct GenericComponentType(pub ComponentType);
-
-impl<'de> de::Deserialize<'de> for Checked<GenericComponentType> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<GenericComponentType>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_COMPONENT_TYPES)
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::ComponentType::*;
-                use crate::validation::Checked::*;
-                Ok(match value as u32 {
-                    BYTE => Valid(GenericComponentType(I8)),
-                    UNSIGNED_BYTE => Valid(GenericComponentType(U8)),
-                    SHORT => Valid(GenericComponentType(I16)),
-                    UNSIGNED_SHORT => Valid(GenericComponentType(U16)),
-                    UNSIGNED_INT => Valid(GenericComponentType(U32)),
-                    FLOAT => Valid(GenericComponentType(F32)),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_u64(Visitor)
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<IndexComponentType> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<IndexComponentType>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_INDEX_TYPES)
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::ComponentType::*;
-                use crate::validation::Checked::*;
-                Ok(match value as u32 {
-                    UNSIGNED_BYTE => Valid(IndexComponentType(U8)),
-                    UNSIGNED_SHORT => Valid(IndexComponentType(U16)),
-                    UNSIGNED_INT => Valid(IndexComponentType(U32)),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_u64(Visitor)
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<Type> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<Type>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_ACCESSOR_TYPES)
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::Type::*;
-                use crate::validation::Checked::*;
-                Ok(match value {
-                    "SCALAR" => Valid(Scalar),
-                    "VEC2" => Valid(Vec2),
-                    "VEC3" => Valid(Vec3),
-                    "VEC4" => Valid(Vec4),
-                    "MAT2" => Valid(Mat2),
-                    "MAT3" => Valid(Mat3),
-                    "MAT4" => Valid(Mat4),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_str(Visitor)
-    }
-}
-
-impl ser::Serialize for Type {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(match *self {
-            Type::Scalar => "SCALAR",
-            Type::Vec2 => "VEC2",
-            Type::Vec3 => "VEC3",
-            Type::Vec4 => "VEC4",
-            Type::Mat2 => "MAT2",
-            Type::Mat3 => "MAT3",
-            Type::Mat4 => "MAT4",
-        })
-    }
-}
-
 impl ComponentType {
     /// Returns the number of bytes this value represents.
-    pub fn size(&self) -> usize {
-        use self::ComponentType::*;
-        match *self {
-            I8 | U8 => 1,
-            I16 | U16 => 2,
-            F32 | U32 => 4,
+    pub fn size(self) -> usize {
+        match self {
+            Self::I8 | Self::U8 => 1,
+            Self::I16 | Self::U16 => 2,
+            Self::F32 | Self::U32 => 4,
         }
     }
 
     /// Returns the corresponding `GLenum`.
     pub fn as_gl_enum(self) -> u32 {
-        match self {
-            ComponentType::I8 => BYTE,
-            ComponentType::U8 => UNSIGNED_BYTE,
-            ComponentType::I16 => SHORT,
-            ComponentType::U16 => UNSIGNED_SHORT,
-            ComponentType::U32 => UNSIGNED_INT,
-            ComponentType::F32 => FLOAT,
-        }
-    }
-}
-
-impl ser::Serialize for ComponentType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_u32(self.as_gl_enum())
+        self as u32
     }
 }
 

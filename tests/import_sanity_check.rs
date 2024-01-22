@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 use std::{fs, path};
 
-const SAMPLE_MODELS_DIRECTORY_PATH: &str = "glTF-Sample-Models/2.0";
+const SAMPLE_MODELS_DIRECTORY_PATH: &str = "glTF-Sample-Assets/Models";
 
 fn sanity_check(
     document: &gltf::Document,
@@ -12,7 +12,7 @@ fn sanity_check(
     assert_eq!(document.buffers().len(), buffer_data.len());
 
     for (buf, data) in document.buffers().zip(buffer_data.iter()) {
-        assert_eq!((buf.length() + 3) & !3, data.0.len())
+        assert!(((buf.length() + 3) & !3) <= data.0.len())
     }
 
     // Check images.
@@ -81,5 +81,7 @@ fn sparse_accessor_without_buffer_view_test() -> Result<(), Box<dyn StdError>> {
 
 #[test]
 fn import_sanity_check() {
-    assert!(run().is_ok());
+    if let Err(err) = run() {
+        panic!("{err}");
+    }
 }

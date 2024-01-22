@@ -1,17 +1,7 @@
 use crate::{buffer, Document};
 
-/// The index data type.
-#[derive(Clone, Debug)]
-pub enum IndexType {
-    /// Corresponds to `GL_UNSIGNED_BYTE`.
-    U8 = 5121,
-
-    /// Corresponds to `GL_UNSIGNED_SHORT`.
-    U16 = 5123,
-
-    /// Corresponds to `GL_UNSIGNED_INT`.
-    U32 = 5125,
-}
+#[doc(inline)]
+pub use json::accessor::sparse::IndexType;
 
 /// Indices of those attributes that deviate from their initialization value.
 pub struct Indices<'a> {
@@ -43,12 +33,7 @@ impl<'a> Indices<'a> {
 
     /// The data type of each index.
     pub fn index_type(&self) -> IndexType {
-        match self.json.component_type.unwrap().0 {
-            json::accessor::ComponentType::U8 => IndexType::U8,
-            json::accessor::ComponentType::U16 => IndexType::U16,
-            json::accessor::ComponentType::U32 => IndexType::U32,
-            _ => unreachable!(),
-        }
+        self.json.index_type
     }
 
     /// Optional application specific data.
@@ -127,17 +112,5 @@ impl<'a> Values<'a> {
     /// Optional application specific data.
     pub fn extras(&self) -> &'a json::Extras {
         &self.json.extras
-    }
-}
-
-impl IndexType {
-    /// Returns the number of bytes this value represents.
-    pub fn size(&self) -> usize {
-        use self::IndexType::*;
-        match *self {
-            U8 => 1,
-            U16 => 2,
-            U32 => 4,
-        }
     }
 }

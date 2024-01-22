@@ -137,7 +137,7 @@ impl<'a> Accessor<'a> {
 
     /// Returns the data type of components in the attribute.
     pub fn data_type(&self) -> DataType {
-        self.json.component_type.unwrap().0
+        self.json.component_type
     }
 
     /// Returns extension data unknown to this crate version.
@@ -163,7 +163,7 @@ impl<'a> Accessor<'a> {
 
     /// Specifies if the attribute is a scalar, vector, or matrix.
     pub fn dimensions(&self) -> Dimensions {
-        self.json.type_.unwrap()
+        self.json.type_
     }
 
     /// Returns the minimum value of each component in this attribute.
