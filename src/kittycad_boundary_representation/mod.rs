@@ -1697,6 +1697,11 @@ pub mod surface {
     }
 
     impl<'a> Nurbs<'a> {
+        /// Wrapper constructor.
+        pub fn new(json: &'a kcad::surface::Nurbs) -> Self {
+            Self { json }
+        }
+
         /// Minimum and maximum values of `u` and `v` respectively.
         pub fn domain(&self) -> [Interval; 2] {
             let (uknots, vknots) = self.knot_vectors();
