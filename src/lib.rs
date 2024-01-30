@@ -181,7 +181,7 @@ pub use self::import::import_slice;
 #[cfg(feature = "KITTYCAD_boundary_representation")]
 #[doc(inline)]
 pub use self::kittycad_boundary_representation::{
-    Curve, Edge, Face, Loop, Shell, Solid, Surface, Vertex,
+    Curve2d, Curve3d, Edge, Face, Loop, Shell, Solid, Surface, Vertex,
 };
 #[doc(inline)]
 pub use self::material::Material;
@@ -631,8 +631,9 @@ impl Document {
     impl_fn_for_kcad!(self, Loop, loops);
     impl_fn_for_kcad!(self, Edge, edges);
     impl_fn_for_kcad!(self, Vertex, vertices);
+    impl_fn_for_kcad!(Curve2d, curves_2d);
+    impl_fn_for_kcad!(Curve3d, curves_3d);
     impl_fn_for_kcad!(Surface, surfaces);
-    impl_fn_for_kcad!(Curve, curves);
 }
 
 impl std::fmt::Display for Error {

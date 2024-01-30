@@ -14,76 +14,57 @@ fn bool_is_false(b: &bool) -> bool {
     !*b
 }
 
+#[doc(inline)]
+pub use curve::{Curve2d, Curve3d};
+
+#[doc(inline)]
+pub use surface::Surface;
+
 /// 2D and 3D curve definitions.
 pub mod curve {
-    use crate::validation::{Checked, Error, Validate};
+    use super::{Axes2d, Axes3d};
+    use crate::validation::{Error, Validate};
     use crate::Root;
     use gltf_derive::Validate;
     use schemars::JsonSchema;
-    use serde::{de, ser};
     use serde_derive::{Deserialize, Serialize};
-    use std::fmt;
-
-    pub const VALID_CURVE_TYPES: &[&str] = &["circle", "linear", "nurbs"];
 
     /// Discriminant for `Curve` data.
-    #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Eq, PartialEq)]
+    #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
     #[schemars(rename = "curve.type")]
+    #[serde(rename_all = "camelCase")]
     pub enum Type {
-        /// Circular curve.
-        Circle = 1,
+        /// Circle curve.
+        Circle,
         /// Line curve.
         Line,
         /// NURBS curve.
         Nurbs,
     }
 
-    impl Type {
-        pub fn as_str(self) -> &'static str {
-            match self {
-                Type::Circle => "circle",
-                Type::Line => "line",
-                Type::Nurbs => "nurbs",
-            }
-        }
-    }
+    crate::impl_validate_nop!(Type);
 
-    impl<'de> de::Deserialize<'de> for Checked<Type> {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
-        {
-            struct Visitor;
-            impl<'de> de::Visitor<'de> for Visitor {
-                type Value = Checked<Type>;
+    /// Circular curve definition.
+    ///
+    /// λ(u) := O + R(cos(u)x + sin(u)y), where:
+    /// * O = `self.origin`,
+    /// * R = `self.radius`,
+    /// * x = `self.axes.x`,
+    /// * y = `self.axes.y`.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(rename = "curve.circle2D")]
+    pub struct Circle2d {
+        /// Local co-ordinate axes.
+        #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+        pub axes: Option<Axes2d>,
 
-                fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    write!(f, "any of: {:?}", VALID_CURVE_TYPES)
-                }
+        /// Position at the center of the circle.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub origin: Option<[f64; 2]>,
 
-                fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-                where
-                    E: de::Error,
-                {
-                    Ok(match value {
-                        "circle" => Checked::Valid(Type::Circle),
-                        "line" => Checked::Valid(Type::Line),
-                        "nurbs" => Checked::Valid(Type::Nurbs),
-                        _ => Checked::Invalid,
-                    })
-                }
-            }
-            deserializer.deserialize_str(Visitor)
-        }
-    }
-
-    impl ser::Serialize for Type {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ser::Serializer,
-        {
-            serializer.serialize_str(self.as_str())
-        }
+        /// Distance from the center position to all points on the circle.
+        pub radius: f64,
     }
 
     /// Circular curve definition.
@@ -91,43 +72,50 @@ pub mod curve {
     /// λ(u) := O + R(cos(u)x + sin(u)y), where:
     /// * O = `self.origin`,
     /// * R = `self.radius`,
-    /// * x = `self.xbasis`,
-    /// * y = `self.normal` × `self.xbasis`,
-    /// * u ∈ {0, 2π}.
-    ///
-    /// The `xbasis` and `normal` vectors form an orthonormal set.
+    /// * x = `self.axes.x`,
+    /// * y = `self.axes.y`.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
     #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve.circle")]
-    pub struct Circle {
+    #[schemars(rename = "curve.circle3D")]
+    pub struct Circle3d {
+        /// Local co-ordinate axes.
+        #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+        pub axes: Option<Axes3d>,
+
         /// Position at the center of the circle.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub origin: Option<[f64; 3]>,
 
         /// Distance from the center position to all points on the circle.
         pub radius: f64,
-
-        /// Unit vector normal to the plane containing the circle.
-        ///
-        /// This serves as the Z basis in the parametric co-ordinate space.
-        pub normal: [f64; 3],
-
-        /// Unit vector in the direction from the origin to the point on
-        /// the circle evaluated at λ(0).
-        ///
-        /// Due to floating point precision, this vector may not lie exactly
-        /// in the plane. If this is the case then the X vector will be treated
-        /// as the projection of this vector onto the plane.
-        pub xbasis: [f64; 3],
     }
 
     /// Line curve definition.
     ///
-    /// Either end or direction must be set.
+    /// λ(u) := O + ux, where:
+    /// * O = `self.origin`,
+    /// * x = `self.direction`.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
     #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve.line")]
-    pub struct Line {
+    #[schemars(rename = "curve.line2D")]
+    pub struct Line2d {
+        /// Origin position.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub origin: Option<[f64; 2]>,
+
+        /// Unit vector pointing away from the origin position.
+        pub direction: [f64; 2],
+    }
+
+    /// Line curve definition.
+    ///
+    /// λ(u) := O + ux, where:
+    /// * O = `self.origin`,
+    /// * x = `self.direction`.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(rename = "curve.line3D")]
+    pub struct Line3d {
         /// Origin position.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub origin: Option<[f64; 3]>,
@@ -136,33 +124,88 @@ pub mod curve {
         pub direction: [f64; 3],
     }
 
-    /// NURBS curve definition.
-    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    /// Non-uniform rational basis spline curve definition.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve.nurbs")]
-    pub struct Nurbs {
+    #[schemars(rename = "curve.nurbs2D")]
+    pub struct Nurbs2d {
         /// Array of control vertices.
-        pub control_points: Vec<[f64; 4]>,
-        /// Knot vector.
-        pub knot_vector: Vec<f64>,
-        /// Order of basis splines.
+        pub control_points: Vec<[f64; 2]>,
+
+        /// Order of the basis splines.
         pub order: u32,
+
+        /// Knot vector.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        pub knot_vector: Vec<f64>,
+
+        /// Weights accompanying control points.
+        ///
+        /// May be omitted for non-rational B-splines.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        pub weights: Vec<f64>,
+    }
+
+    impl Validate for Nurbs2d {
+        fn validate<P, R>(&self, _root: &Root, path: P, report: &mut R)
+        where
+            P: Fn() -> crate::Path,
+            R: FnMut(&dyn Fn() -> crate::Path, Error),
+        {
+            if !self.weights.is_empty() && self.weights.len() != self.control_points.len() {
+                report(&|| path().field("weights"), Error::Invalid);
+            }
+        }
+    }
+
+    /// Non-uniform rational basis spline curve definition.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(rename = "curve.nurbs3D")]
+    pub struct Nurbs3d {
+        /// Array of control vertices.
+        pub control_points: Vec<[f64; 3]>,
+
+        /// Order of the basis splines.
+        pub order: u32,
+
+        /// Knot vector.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        pub knot_vector: Vec<f64>,
+
+        /// Weights accompanying control points.
+        ///
+        /// May be omitted for non-rational B-splines.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        pub weights: Vec<f64>,
+    }
+
+    impl Validate for Nurbs3d {
+        fn validate<P, R>(&self, _root: &Root, path: P, report: &mut R)
+        where
+            P: Fn() -> crate::Path,
+            R: FnMut(&dyn Fn() -> crate::Path, Error),
+        {
+            if !self.weights.is_empty() && self.weights.len() != self.control_points.len() {
+                report(&|| path().field("weights"), Error::Invalid);
+            }
+        }
     }
 
     /// Specific curve data.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve.geometry")]
-    pub enum Geometry {
+    #[schemars(rename = "curve.geometry2D")]
+    pub enum Geometry2d {
         /// Circle curve.
-        Circle(Circle),
+        Circle(Circle2d),
         /// Line curve.
-        Line(Line),
+        Line(Line2d),
         /// NURBS curve.
-        Nurbs(Nurbs),
+        Nurbs(Nurbs2d),
     }
 
-    impl Geometry {
+    impl Geometry2d {
         /// Returns the corresponding type for the geometry variant.
         pub fn type_(&self) -> Type {
             match self {
@@ -173,7 +216,45 @@ pub mod curve {
         }
     }
 
-    impl Validate for Geometry {
+    impl Validate for Geometry2d {
+        fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
+        where
+            P: Fn() -> crate::Path,
+            R: FnMut(&dyn Fn() -> crate::Path, Error),
+        {
+            match self {
+                Self::Circle(circle) => circle.validate(root, || path().field("circle"), report),
+                Self::Line(line) => line.validate(root, || path().field("line"), report),
+                Self::Nurbs(nurbs) => nurbs.validate(root, || path().field("nurbs"), report),
+            }
+        }
+    }
+
+    /// Specific curve data.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(rename = "curve.geometry3D")]
+    pub enum Geometry3d {
+        /// Circle curve.
+        Circle(Circle3d),
+        /// Line curve.
+        Line(Line3d),
+        /// NURBS curve.
+        Nurbs(Nurbs3d),
+    }
+
+    impl Geometry3d {
+        /// Returns the corresponding type for the geometry variant.
+        pub fn type_(&self) -> Type {
+            match self {
+                Self::Circle(_) => Type::Circle,
+                Self::Line(_) => Type::Line,
+                Self::Nurbs(_) => Type::Nurbs,
+            }
+        }
+    }
+
+    impl Validate for Geometry3d {
         fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
         where
             P: Fn() -> crate::Path,
@@ -190,11 +271,11 @@ pub mod curve {
     /// Abstract curve data.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
     #[serde(rename_all = "camelCase")]
-    #[schemars(rename = "curve")]
-    pub struct Curve {
+    #[schemars(rename = "curve3D")]
+    pub struct Curve2d {
         /// Discriminant.
         #[serde(rename = "type")]
-        pub type_: Checked<Type>,
+        pub type_: Type,
 
         /// Optional name for this surface.
         #[cfg(feature = "names")]
@@ -203,24 +284,41 @@ pub mod curve {
 
         /// Specific curve data.
         #[serde(flatten)]
-        pub geometry: Geometry,
+        pub geometry: Geometry2d,
+    }
+
+    /// Abstract curve data.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(rename = "curve3D")]
+    pub struct Curve3d {
+        /// Discriminant.
+        #[serde(rename = "type")]
+        pub type_: Type,
+
+        /// Optional name for this surface.
+        #[cfg(feature = "names")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub name: Option<String>,
+
+        /// Specific curve data.
+        #[serde(flatten)]
+        pub geometry: Geometry3d,
     }
 }
 
 /// 3D surface definitions.
 pub mod surface {
-    use crate::validation::{Checked, Error, Validate};
+    use super::Axes3d;
+    use crate::validation::{Error, Validate};
     use crate::Root;
     use gltf_derive::Validate;
     use schemars::JsonSchema;
-    use serde::{de, ser};
     use serde_derive::{Deserialize, Serialize};
-    use std::fmt;
-
-    pub const VALID_SURFACE_TYPES: &[&str] = &["cylinder", "nurbs", "plane", "sphere", "torus"];
 
     /// Discriminant for `Surface` data.
-    #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Eq, PartialEq)]
+    #[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
     #[schemars(rename = "surface.type")]
     pub enum Type {
         /// Cylindrical surface.
@@ -235,69 +333,16 @@ pub mod surface {
         Torus,
     }
 
-    impl Type {
-        pub fn as_str(self) -> &'static str {
-            match self {
-                Type::Cylinder => "cylinder",
-                Type::Nurbs => "nurbs",
-                Type::Plane => "plane",
-                Type::Sphere => "sphere",
-                Type::Torus => "torus",
-            }
-        }
-    }
-
-    impl<'de> de::Deserialize<'de> for Checked<Type> {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
-        {
-            struct Visitor;
-            impl<'de> de::Visitor<'de> for Visitor {
-                type Value = Checked<Type>;
-
-                fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    write!(f, "any of: {:?}", VALID_SURFACE_TYPES)
-                }
-
-                fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-                where
-                    E: de::Error,
-                {
-                    Ok(match value {
-                        "cylinder" => Checked::Valid(Type::Cylinder),
-                        "nurbs" => Checked::Valid(Type::Nurbs),
-                        "plane" => Checked::Valid(Type::Plane),
-                        "sphere" => Checked::Valid(Type::Sphere),
-                        "torus" => Checked::Valid(Type::Torus),
-                        _ => Checked::Invalid,
-                    })
-                }
-            }
-            deserializer.deserialize_str(Visitor)
-        }
-    }
-
-    impl ser::Serialize for Type {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ser::Serializer,
-        {
-            serializer.serialize_str(self.as_str())
-        }
-    }
+    crate::impl_validate_nop!(Type);
 
     /// Parametric cylindrical surface definition.
     ///
     /// σ(u, v) := O + R(cos(u)x + sin(u)y) + vz, where:
-    /// * O = `self.circle.origin`,
-    /// * R = `self.circle.radius`,
-    /// * x = `self.circle.xbasis`,
-    /// * y = `self.circle.normal` × `self.circle.xbasis`,
-    /// * z = `self.circle.normal`,
-    /// * h = `self.height`,
-    /// * u ∈ {0, 2π},
-    /// * v ∈ {0, h}.
+    /// * O = `self.origin`,
+    /// * R = `self.radius`,
+    /// * x = `self.axes.x`,
+    /// * y = `self.axes.y`,
+    /// * z = `self.axes.x` × `self.axes.y`.
     ///
     /// Cylinders are defined in reference to a circle that is extruded
     /// along the circle normal vector.
@@ -305,10 +350,16 @@ pub mod surface {
     #[serde(rename_all = "camelCase")]
     #[schemars(rename = "surface.cylinder")]
     pub struct Cylinder {
-        /// The extruded circle.
-        pub circle: super::curve::Circle,
-        /// Height of the extruded circle.
-        pub height: f64,
+        /// Local co-ordinate axes.
+        #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+        pub axes: Option<Axes3d>,
+
+        /// Position at the center of the circle.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub origin: Option<[f64; 3]>,
+
+        /// Distance from the center position to all points on the circle.
+        pub radius: f64,
     }
 
     /// NURBS surface definition.
@@ -317,13 +368,19 @@ pub mod surface {
     #[schemars(rename = "surface.nurbs")]
     pub struct Nurbs {
         /// Matrix of control point vertices.
-        pub control_points: Vec<[f64; 4]>,
+        pub control_points: Vec<[f64; 3]>,
         /// Dimensions of control point vertex matrix.
         pub num_control_points: [u32; 2],
         /// Number of knots in U and V.
         pub num_knots: [u32; 2],
         /// Knot vector.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub knot_vector: Vec<f64>,
+        /// Weights.
+        ///
+        /// May be omitted for non-rational B-splines.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        pub weights: Vec<f64>,
         /// Order of basis splines.
         pub order: [u32; 2],
     }
@@ -343,50 +400,67 @@ pub mod surface {
             if expected_knots as usize != self.knot_vector.len() {
                 report(&|| path().field("num_knots"), Error::Invalid);
             }
+
+            if !self.weights.is_empty() && self.weights.len() != self.control_points.len() {
+                report(&|| path().field("weights"), Error::Invalid);
+            }
         }
     }
 
     /// Plane surface definition.
+    ///
+    /// σ(u, v) := O + ux + vy, where:
+    /// * O = `self.origin`,
+    /// * x = `self.axes.x`,
+    /// * y = `self.axes.y`.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, gltf_derive::Validate)]
     #[serde(rename_all = "camelCase")]
     #[schemars(rename = "surface.plane")]
     pub struct Plane {
-        /// Normal vector to the plane.
-        pub normal: [f64; 3],
+        /// Local co-ordinate axes.
+        #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+        pub axes: Option<Axes3d>,
+
         /// An arbitrary point that lies on the plane.
-        pub point: [f64; 3],
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub origin: Option<[f64; 3]>,
     }
 
     /// Parametric spherical surface definition.
     ///
     /// σ(u, v) := O + Rcos(v)(cos(u)x + sin(u)y) + Rsin(v)z, where:
-    /// * O = `self.horizon.origin`,
-    /// * R = `self.horizon.radius`,
-    /// * x = `self.horizon.xbasis`,
-    /// * y = `self.horizon.normal` × `self.horizon.xbasis`,
-    /// * z = `self.horizon.normal`,
-    /// * u ∈ {0, 2π},
-    /// * v ∈ {0, 2π}.
+    /// * O = `self.origin`,
+    /// * R = `self.radius`,
+    /// * x = `self.axes.x`,
+    /// * y = `self.axes.y`,
+    /// * z = `self.axes.x` × `self.axes.y`.
     ///
     /// Spheres are defined in reference to a circle at zero inclination.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
     #[serde(rename_all = "camelCase")]
     #[schemars(rename = "surface.sphere")]
     pub struct Sphere {
-        /// The circle at zero inclination.
-        pub horizon: super::curve::Circle,
+        /// Local co-ordinate axes.
+        #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+        pub axes: Option<Axes3d>,
+
+        /// Position at the center of the circle.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub origin: Option<[f64; 3]>,
+
+        /// Distance from the center position to all points on the circle.
+        pub radius: f64,
     }
 
     /// Toroidal surface definition.
     ///
     /// σ(u, v) := O + (R + rcos(v))(cos(u)x + sin(u)y) + rsin(v)z, where:
     /// * O = `self.origin`,
-    /// * R = `self.radius`,
-    /// * r = `self.circle.radius`,
-    /// * x = `self.circle.xbasis`,
-    /// * y = `self.circle.normal` × `self.circle.xbasis`,
-    /// * z = `self.circle.normal`,
-    /// * u, v ∈ {0, 2π}.
+    /// * R = `self.major_radius`,
+    /// * r = `self.minor_radius`,
+    /// * x = `self.axes.x`,
+    /// * y = `self.axes.y`,
+    /// * z = `self.axes.x` × `self.axes.y`.
     ///
     /// Tori are defined in reference to a circle that is revolved about
     /// an origin at a specified distance. This distance is called the
@@ -396,14 +470,21 @@ pub mod surface {
     #[serde(rename_all = "camelCase")]
     #[schemars(rename = "surface.torus")]
     pub struct Torus {
+        /// Local co-ordinate axes.
+        #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+        pub axes: Option<Axes3d>,
+
         /// The center of the torus.
         ///
         /// The axis of revolution passes through the origin of the torus.
-        pub origin: [f64; 3],
-        /// Circle of revolution.
-        pub circle: super::curve::Circle,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub origin: Option<[f64; 3]>,
+
         /// Distance from the torus origin to the origin of the revolved circle.
-        pub radius: f64,
+        pub major_radius: f64,
+
+        /// Distance of points away from the center of the revolved circle.
+        pub minor_radius: f64,
     }
 
     /// Specific surface data.
@@ -461,7 +542,7 @@ pub mod surface {
     pub struct Surface {
         /// Discriminant.
         #[serde(rename = "type")]
-        pub type_: Checked<Type>,
+        pub type_: Type,
         /// Optional name for this surface.
         #[cfg(feature = "names")]
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -472,42 +553,64 @@ pub mod surface {
     }
 }
 
-/// Pair of vertices on a face with an accompanying 3D curve..
+/// Defines a local 2D co-ordinate system.
+///
+/// In 3D systems, the 'z' axis is inferred from the cross product of the 'x' and 'y' axes.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
-#[serde(rename_all = "camelCase")]
-#[schemars(rename = "edge")]
-pub struct Edge {
-    /// The edge curve geometry in 3D (or homogeneous 4D) space.
-    pub curve: IndexWithOrientation<Curve>,
+#[schemars(rename = "axes2D")]
+pub struct Axes2d {
+    /// The 'x' co-ordinate axis.
+    #[serde(rename = "xAxis")]
+    pub x: [f64; 2],
 
-    /// Edge start vertex.
-    pub start: Option<Index<Vertex>>,
+    /// The 'y' co-ordinate axis.
+    #[serde(rename = "yAxis")]
+    pub y: [f64; 2],
+}
 
-    /// Edge end vertex.
-    pub end: Option<Index<Vertex>>,
+impl Default for Axes2d {
+    fn default() -> Self {
+        Self {
+            x: [1.0, 0.0],
+            y: [0.0, 1.0],
+        }
+    }
+}
 
-    /// Marker for a closed edge.
-    #[serde(default, skip_serializing_if = "bool_is_false")]
-    pub closed: bool,
+/// Defines a local 3D co-ordinate system.
+///
+/// The 'z' axis is inferred from the cross product of the 'x' and 'y' axes.
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[schemars(rename = "axes3D")]
+pub struct Axes3d {
+    /// The 'x' co-ordinate axis.
+    #[serde(rename = "xAxis")]
+    pub x: [f64; 3],
 
-    /// Interval for the curve's 't' parameter.
-    pub t: Interval,
+    /// The 'y' co-ordinate axis.
+    #[serde(rename = "yAxis")]
+    pub y: [f64; 3],
+}
+
+impl Default for Axes3d {
+    fn default() -> Self {
+        Self {
+            x: [1.0, 0.0, 0.0],
+            y: [0.0, 1.0, 0.0],
+        }
+    }
 }
 
 /// Junctions of edges in 3D space.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "vertex")]
-pub struct Vertex(pub [f64; 3]);
+pub struct Vertex(
+    /// `[x, y, z]` co-ordinate.
+    pub [f64; 3],
+);
 
-impl Validate for Vertex {
-    fn validate<P, R>(&self, _root: &Root, _path: P, _report: &mut R)
-    where
-        P: Fn() -> crate::Path,
-        R: FnMut(&dyn Fn() -> crate::Path, Error),
-    {
-    }
-}
+crate::impl_validate_nop!(Vertex);
 
 /// Selected orientation of an orientable item.
 #[derive(
@@ -536,11 +639,29 @@ impl Orientation {
     }
 }
 
+impl std::ops::Mul for Orientation {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self as i8) * (rhs as i8) {
+            1 => Self::Same,
+            -1 => Self::Reverse,
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// Index for orientable items.
 ///
 /// The JSON representation is an array of two numbers: the index followed by its orientation.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct IndexWithOrientation<T: Validate>(pub Index<T>, #[serde(default)] pub Orientation);
+pub struct IndexWithOrientation<T: Validate>(
+    /// Index referencing an orientable item.
+    pub Index<T>,
+    /// Selected orientation of the referenced item.
+    #[serde(default)]
+    pub Orientation,
+);
 
 impl<T: Validate> IndexWithOrientation<T> {
     /// Explicit constructor.
@@ -623,7 +744,14 @@ where
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "interval")]
-pub struct Interval(pub f64, pub f64);
+pub struct Interval(
+    /// Minimum value.
+    pub f64,
+    /// Maximum value.
+    pub f64,
+);
+
+crate::impl_validate_nop!(Interval);
 
 impl Interval {
     /// [0.0, 1.0]
@@ -647,26 +775,39 @@ impl Interval {
     }
 }
 
-impl Validate for Interval {
-    fn validate<P, R>(&self, _root: &Root, _path: P, _report: &mut R)
-    where
-        P: Fn() -> crate::Path,
-        R: FnMut(&dyn Fn() -> crate::Path, Error),
-    {
-    }
-}
-
 /// Curve tracing the path of an edge in 2D surface space.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
 pub struct Trace {
     /// The trace curve geometry in 2D (or homogeneous 3D) space.
-    pub curve: IndexWithOrientation<Curve>,
+    pub curve: IndexWithOrientation<Curve2d>,
 
     /// Marker for a closed trace.
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub closed: bool,
 
     /// Interval for the curve 't' parameter.
+    pub t: Interval,
+}
+
+/// Pair of vertices on a face with an accompanying 3D curve..
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[serde(rename_all = "camelCase")]
+#[schemars(rename = "edge")]
+pub struct Edge {
+    /// The edge curve geometry in 3D (or homogeneous 4D) space.
+    pub curve: IndexWithOrientation<Curve3d>,
+
+    /// Edge start vertex.
+    pub start: Option<Index<Vertex>>,
+
+    /// Edge end vertex.
+    pub end: Option<Index<Vertex>>,
+
+    /// Marker for a closed edge.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub closed: bool,
+
+    /// Interval for the curve's 't' parameter.
     pub t: Interval,
 }
 
@@ -727,6 +868,3 @@ pub struct Solid {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mesh: Option<Index<crate::Mesh>>,
 }
-
-pub use curve::Curve;
-pub use surface::Surface;

@@ -114,3 +114,19 @@ pub fn push<T>(vec: &mut Vec<T>, item: T) -> Index<T> {
     vec.push(item);
     Index::new(index as u32)
 }
+
+/// Trivial (no-op) implementation of the `Validate` trait.
+#[macro_export]
+macro_rules! impl_validate_nop {
+    ($ty:ty) => {
+        impl $crate::validation::Validate for $ty {
+            fn validate<P, R>(&self, _root: &$crate::Root, _path: P, _report: &mut R)
+            where
+                P: Fn() -> $crate::Path,
+                R: FnMut(&dyn Fn() -> $crate::Path, $crate::validation::Error),
+            {
+                // nop
+            }
+        }
+    };
+}
