@@ -18,6 +18,7 @@ where
     T: Clone
         + Copy
         + Default
+        + approx::ApproxEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
@@ -36,6 +37,7 @@ where
     T: Clone
         + Copy
         + Default
+        + approx::ApproxEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
@@ -55,6 +57,7 @@ where
     T: Clone
         + Copy
         + Default
+        + approx::ApproxEq
         + std::fmt::Debug
         + std::ops::Add<T, Output = T>
         + std::ops::Div<f64, Output = T>
@@ -148,6 +151,8 @@ where
     /// Compute this BSpline's derivative.
     #[allow(unused)]
     pub fn derivative<'b>(&'b self) -> BSpline<'b, T> {
+        use approx::ApproxEq;
+
         let d = self.degree;
         if d <= 1 {
             return BSpline::<'b, T> {
@@ -160,8 +165,10 @@ where
         let n = self.control_points.len();
         let m = self.padded_knot_vector.len();
         let u = &self.padded_knot_vector[d..(m - d)];
-
         let mut p = self.control_points.clone().into_owned();
+
+        let mut last_non_zero = None;
+        let mut pending = Vec::new();
         for i in 0..(n - 1) {
             let upper = p[i + 1] - p[i];
             let lower = u[i + 1 + d] - u[i + 1];
@@ -169,6 +176,28 @@ where
                 p[i] = p[i] * 0.0;
             } else {
                 p[i] = (d as f64) * upper / lower;
+            }
+
+            // Repeated control points produce zero derivative vectors.
+            // In this case, we need to set the derivative to its nearest
+            // non-zero neighbouring derivative control point.
+            //
+            // The 'pending' buffer stores the indices of zero control
+            // points when a non-zero derivative has not been found yet.
+            //
+            // The 'last_non_zero' variable, as the name suggests, stores
+            // the last non-zero derivative control point.
+            if approx::relative_eq!(p[i], Default::default()) {
+                if let Some(q) = last_non_zero {
+                    p[i] = q;
+                } else {
+                    pending.push(i);
+                }
+            } else {
+                last_non_zero = Some(p[i]);
+                for qi in pending.drain(..) {
+                    p[qi] = p[i];
+                }
             }
         }
         let _ = p.pop();
@@ -182,7 +211,7 @@ where
         }
     }
 
-    /// Evaluate the BSpline function at `t`.
+    /// Evaluate the BSpline function at ` t`.
     pub fn evaluate(&self, t: f64) -> T {
         if self.degree == 0 {
             Default::default()
