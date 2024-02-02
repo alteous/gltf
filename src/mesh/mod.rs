@@ -62,7 +62,7 @@ use crate::{Accessor, Buffer, Document, Material};
 use crate::accessor;
 
 pub use json::mesh::{Mode, Semantic};
-use json::validation::Checked;
+
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 
@@ -198,12 +198,7 @@ impl<'a> Primitive<'a> {
 
     /// Returns the bounds of the `POSITION` vertex attribute.
     pub fn bounding_box(&self) -> BoundingBox {
-        // NOTE: cannot panic if validated "minimally"
-        let pos_accessor_index = self
-            .json
-            .attributes
-            .get(&Checked::Valid(Semantic::Positions))
-            .unwrap();
+        let pos_accessor_index = self.json.attributes.get(&Semantic::Positions).unwrap();
         let pos_accessor = self
             .mesh
             .document
@@ -240,7 +235,7 @@ impl<'a> Primitive<'a> {
     pub fn get(&self, semantic: &Semantic) -> Option<Accessor<'a>> {
         self.json
             .attributes
-            .get(&json::validation::Checked::Valid(semantic.clone()))
+            .get(semantic)
             .map(|index| self.mesh.document.accessors().nth(index.value()).unwrap())
     }
 
@@ -277,7 +272,7 @@ impl<'a> Primitive<'a> {
 
     /// The type of primitives to render.
     pub fn mode(&self) -> Mode {
-        self.json.mode.unwrap()
+        self.json.mode
     }
 
     /// Returns an `Iterator` that visits the morph targets of the primitive.

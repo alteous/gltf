@@ -26,7 +26,7 @@ pub struct Attributes<'a> {
     /// The internal attribute iterator.
     pub(crate) iter: collections::btree_map::Iter<
         'a,
-        json::validation::Checked<json::mesh::Semantic>,
+        json::mesh::Semantic,
         json::Index<json::accessor::Accessor>,
     >,
 }
@@ -46,7 +46,7 @@ impl<'a> Iterator for Attributes<'a> {
     type Item = Attribute<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|(key, index)| {
-            let semantic = key.as_ref().unwrap().clone();
+            let semantic = key.clone();
             let accessor = self.document.accessors().nth(index.value()).unwrap();
             (semantic, accessor)
         })

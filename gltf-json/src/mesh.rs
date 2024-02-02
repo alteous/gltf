@@ -1,71 +1,42 @@
-use crate::validation::{Checked, Error, Validate};
+use crate::validation::{Error, Validate};
 use crate::{accessor, extensions, material, Extras, Index};
 use gltf_derive::Validate;
-use serde::{de, ser};
+use serde::ser;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::from_value;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::BTreeMap;
-use std::fmt;
-
-/// Corresponds to `GL_POINTS`.
-pub const POINTS: u32 = 0;
-
-/// Corresponds to `GL_LINES`.
-pub const LINES: u32 = 1;
-
-/// Corresponds to `GL_LINE_LOOP`.
-pub const LINE_LOOP: u32 = 2;
-
-/// Corresponds to `GL_LINE_STRIP`.
-pub const LINE_STRIP: u32 = 3;
-
-/// Corresponds to `GL_TRIANGLES`.
-pub const TRIANGLES: u32 = 4;
-
-/// Corresponds to `GL_TRIANGLE_STRIP`.
-pub const TRIANGLE_STRIP: u32 = 5;
-
-/// Corresponds to `GL_TRIANGLE_FAN`.
-pub const TRIANGLE_FAN: u32 = 6;
-
-/// All valid primitive rendering modes.
-pub const VALID_MODES: &[u32] = &[
-    POINTS,
-    LINES,
-    LINE_LOOP,
-    LINE_STRIP,
-    TRIANGLES,
-    TRIANGLE_STRIP,
-    TRIANGLE_FAN,
-];
 
 /// All valid semantic names for Morph targets.
 pub const VALID_MORPH_TARGETS: &[&str] = &["POSITION", "NORMAL", "TANGENT"];
 
 /// The type of primitives to render.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
+#[repr(u32)]
 pub enum Mode {
     /// Corresponds to `GL_POINTS`.
-    Points = 1,
+    Points = 0,
 
     /// Corresponds to `GL_LINES`.
-    Lines,
+    Lines = 1,
 
     /// Corresponds to `GL_LINE_LOOP`.
-    LineLoop,
+    LineLoop = 2,
 
     /// Corresponds to `GL_LINE_STRIP`.
-    LineStrip,
+    LineStrip = 3,
 
     /// Corresponds to `GL_TRIANGLES`.
-    Triangles,
+    #[default]
+    Triangles = 4,
 
     /// Corresponds to `GL_TRIANGLE_STRIP`.
-    TriangleStrip,
+    TriangleStrip = 5,
 
     /// Corresponds to `GL_TRIANGLE_FAN`.
-    TriangleFan,
+    TriangleFan = 6,
 }
+impl Validate for Mode {}
 
 /// A set of primitives to be rendered.
 ///
@@ -101,7 +72,7 @@ pub struct Mesh {
 pub struct Primitive {
     /// Maps attribute semantic names to the `Accessor`s containing the
     /// corresponding attribute data.
-    pub attributes: BTreeMap<Checked<Semantic>, Index<accessor::Accessor>>,
+    pub attributes: BTreeMap<Semantic, Index<accessor::Accessor>>,
 
     /// Extension specific data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -123,7 +94,7 @@ pub struct Primitive {
 
     /// The type of primitives to render.
     #[serde(default, skip_serializing_if = "is_primitive_mode_default")]
-    pub mode: Checked<Mode>,
+    pub mode: Mode,
 
     /// An array of Morph Targets, each  Morph Target is a dictionary mapping
     /// attributes (only `POSITION`, `NORMAL`, and `TANGENT` supported) to their
@@ -132,8 +103,8 @@ pub struct Primitive {
     pub targets: Option<Vec<MorphTarget>>,
 }
 
-fn is_primitive_mode_default(mode: &Checked<Mode>) -> bool {
-    *mode == Checked::Valid(Mode::Triangles)
+fn is_primitive_mode_default(mode: &Mode) -> bool {
+    *mode == Mode::Triangles
 }
 
 impl Validate for Primitive {
@@ -159,8 +130,7 @@ impl Validate for Primitive {
 
         // Custom part
         let position_path = &|| path().field("attributes").key("POSITION");
-        if let Some(pos_accessor_index) = self.attributes.get(&Checked::Valid(Semantic::Positions))
-        {
+        if let Some(pos_accessor_index) = self.attributes.get(&Semantic::Positions) {
             // spec: POSITION accessor **must** have `min` and `max` properties defined.
             let pos_accessor = &root.accessors[pos_accessor_index.value()];
 
@@ -207,11 +177,14 @@ pub struct MorphTarget {
 }
 
 /// Vertex attribute semantic name.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
+#[serde(try_from = "String")]
 pub enum Semantic {
     /// Extra attribute name.
-    #[cfg(feature = "extras")]
     Extras(String),
+
+    /// Extension attribute name.
+    Extensions(String),
 
     /// XYZ vertex positions.
     Positions,
@@ -235,99 +208,29 @@ pub enum Semantic {
     /// Joint weights.
     Weights(u32),
 }
-
-impl Default for Mode {
-    fn default() -> Mode {
-        Mode::Triangles
-    }
-}
+impl Validate for Semantic {}
 
 impl Mode {
     /// Returns the equivalent `GLenum`.
     pub fn as_gl_enum(self) -> u32 {
-        match self {
-            Mode::Points => POINTS,
-            Mode::Lines => LINES,
-            Mode::LineLoop => LINE_LOOP,
-            Mode::LineStrip => LINE_STRIP,
-            Mode::Triangles => TRIANGLES,
-            Mode::TriangleStrip => TRIANGLE_STRIP,
-            Mode::TriangleFan => TRIANGLE_FAN,
-        }
+        self as u32
     }
 }
 
-impl<'de> de::Deserialize<'de> for Checked<Mode> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<Mode>;
+impl TryFrom<String> for Semantic {
+    type Error = <u32 as std::str::FromStr>::Err;
 
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_MODES)
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::Mode::*;
-                use crate::validation::Checked::*;
-                Ok(match value as u32 {
-                    POINTS => Valid(Points),
-                    LINES => Valid(Lines),
-                    LINE_LOOP => Valid(LineLoop),
-                    LINE_STRIP => Valid(LineStrip),
-                    TRIANGLES => Valid(Triangles),
-                    TRIANGLE_STRIP => Valid(TriangleStrip),
-                    TRIANGLE_FAN => Valid(TriangleFan),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_u64(Visitor)
-    }
-}
-
-impl ser::Serialize for Mode {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_u32(self.as_gl_enum())
-    }
-}
-
-impl Semantic {
-    fn checked(s: &str) -> Checked<Self> {
-        use self::Semantic::*;
-        use crate::validation::Checked::*;
-        match s {
-            "NORMAL" => Valid(Normals),
-            "POSITION" => Valid(Positions),
-            "TANGENT" => Valid(Tangents),
-            #[cfg(feature = "extras")]
-            _ if s.starts_with('_') => Valid(Extras(s[1..].to_string())),
-            _ if s.starts_with("COLOR_") => match s["COLOR_".len()..].parse() {
-                Ok(set) => Valid(Colors(set)),
-                Err(_) => Invalid,
-            },
-            _ if s.starts_with("TEXCOORD_") => match s["TEXCOORD_".len()..].parse() {
-                Ok(set) => Valid(TexCoords(set)),
-                Err(_) => Invalid,
-            },
-            _ if s.starts_with("JOINTS_") => match s["JOINTS_".len()..].parse() {
-                Ok(set) => Valid(Joints(set)),
-                Err(_) => Invalid,
-            },
-            _ if s.starts_with("WEIGHTS_") => match s["WEIGHTS_".len()..].parse() {
-                Ok(set) => Valid(Weights(set)),
-                Err(_) => Invalid,
-            },
-            _ => Invalid,
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        match s.as_str() {
+            "NORMAL" => Ok(Self::Normals),
+            "POSITION" => Ok(Self::Positions),
+            "TANGENT" => Ok(Self::Tangents),
+            _ if s.starts_with("COLOR_") => s["COLOR_".len()..].parse().map(Self::Colors),
+            _ if s.starts_with("TEXCOORD_") => s["TEXCOORD_".len()..].parse().map(Self::TexCoords),
+            _ if s.starts_with("JOINTS_") => s["JOINTS_".len()..].parse().map(Self::Joints),
+            _ if s.starts_with("WEIGHTS_") => s["WEIGHTS_".len()..].parse().map(Self::Weights),
+            _ if s.starts_with(' ') => Ok(Self::Extras(s[1..].to_owned())),
+            _ => Ok(Self::Extensions(s)),
         }
     }
 }
@@ -343,50 +246,16 @@ impl ser::Serialize for Semantic {
 
 impl ToString for Semantic {
     fn to_string(&self) -> String {
-        use self::Semantic::*;
         match *self {
-            Positions => "POSITION".into(),
-            Normals => "NORMAL".into(),
-            Tangents => "TANGENT".into(),
-            Colors(set) => format!("COLOR_{}", set),
-            TexCoords(set) => format!("TEXCOORD_{}", set),
-            Joints(set) => format!("JOINTS_{}", set),
-            Weights(set) => format!("WEIGHTS_{}", set),
-            #[cfg(feature = "extras")]
-            Extras(ref name) => format!("_{}", name),
+            Self::Positions => "POSITION".into(),
+            Self::Normals => "NORMAL".into(),
+            Self::Tangents => "TANGENT".into(),
+            Self::Colors(set) => format!("COLOR_{}", set),
+            Self::TexCoords(set) => format!("TEXCOORD_{}", set),
+            Self::Joints(set) => format!("JOINTS_{}", set),
+            Self::Weights(set) => format!("WEIGHTS_{}", set),
+            Self::Extras(ref name) => format!("_{name}"),
+            Self::Extensions(ref name) => name.clone(),
         }
-    }
-}
-
-impl ToString for Checked<Semantic> {
-    fn to_string(&self) -> String {
-        match *self {
-            Checked::Valid(ref semantic) => semantic.to_string(),
-            Checked::Invalid => "<invalid semantic name>".into(),
-        }
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<Semantic> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<Semantic>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "semantic name")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Semantic::checked(value))
-            }
-        }
-        deserializer.deserialize_str(Visitor)
     }
 }
