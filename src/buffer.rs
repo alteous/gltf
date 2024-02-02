@@ -183,7 +183,7 @@ impl<'a> View<'a> {
 
     /// Optional target the buffer should be bound to.
     pub fn target(&self) -> Option<Target> {
-        self.json.target.map(|target| target.unwrap())
+        self.json.target.map(|target| target)
     }
 
     /// Returns extension data unknown to this crate version.

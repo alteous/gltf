@@ -94,7 +94,7 @@ fn export(output: Output) {
         extensions: Default::default(),
         extras: Default::default(),
         name: None,
-        target: Some(Valid(json::buffer::Target::ArrayBuffer)),
+        target: Some(json::buffer::Target::ArrayBuffer),
     });
     let positions = root.push(json::Accessor {
         buffer_view: Some(buffer_view),
