@@ -64,7 +64,7 @@ impl<'a> Light<'a> {
     /// Specifies the light subcategory.
     pub fn kind(&self) -> Kind {
         use json::extensions::scene::khr_lights_punctual::Type;
-        match self.json.type_.unwrap() {
+        match self.json.type_ {
             Type::Directional => Kind::Directional,
             Type::Point => Kind::Point,
             Type::Spot => {

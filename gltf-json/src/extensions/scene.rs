@@ -30,15 +30,10 @@ pub struct Node {
 
 #[cfg(feature = "KHR_lights_punctual")]
 pub mod khr_lights_punctual {
-    use crate::validation::{Checked, Error, Validate};
+    use crate::validation::{Error, Validate};
     use crate::{Extras, Index, Path, Root};
     use gltf_derive::Validate;
-    use serde::{de, ser};
     use serde_derive::{Deserialize, Serialize};
-    use std::fmt;
-
-    /// All valid light types.
-    pub const VALID_TYPES: &[&str] = &["directional", "point", "spot"];
 
     #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
     pub struct KhrLightsPunctual {
@@ -46,7 +41,7 @@ pub mod khr_lights_punctual {
     }
 
     /// Specifies the light type.
-    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+    #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
     pub enum Type {
         /// Directional lights act as though they are infinitely far away and emit light in
         /// the direction of the local -z axis. This light type inherits the orientation of
@@ -54,6 +49,7 @@ pub mod khr_lights_punctual {
         /// effect on the inherited node orientation. Because it is at an infinite distance,
         /// the light is not attenuated. Its intensity is defined in lumens per metre squared,
         /// or lux (lm/m^2).
+        #[serde(rename = "directional")]
         Directional = 1,
 
         /// Point lights emit light in all directions from their position in space; rotation
@@ -62,6 +58,7 @@ pub mod khr_lights_punctual {
         /// increases from the light's position (i.e. brightness goes like the inverse square
         /// of the distance). Point light intensity is defined in candela, which is lumens per
         /// square radian (lm/sr)."
+        #[serde(rename = "point")]
         Point,
 
         /// Spot lights emit light in a cone in the direction of the local -z axis. The angle
@@ -73,8 +70,10 @@ pub mod khr_lights_punctual {
         /// defined in candela, which is lumens per square radian (lm/sr). Engines that don't
         /// support two angles for spotlights should use outerConeAngle as the spotlight angle
         /// (leaving innerConeAngle to implicitly be 0).
+        #[serde(rename = "spot")]
         Spot,
     }
+    crate::trivial_impl_validate!(Type);
 
     #[derive(Clone, Debug, Deserialize, Serialize)]
     pub struct Light {
@@ -113,7 +112,7 @@ pub mod khr_lights_punctual {
 
         /// Specifies the light type.
         #[serde(rename = "type")]
-        pub type_: Checked<Type>,
+        pub type_: Type,
     }
 
     impl Validate for Light {
@@ -122,10 +121,8 @@ pub mod khr_lights_punctual {
             P: Fn() -> Path,
             R: FnMut(&dyn Fn() -> Path, Error),
         {
-            if let Checked::Valid(ty) = self.type_.as_ref() {
-                if *ty == Type::Spot && self.spot.is_none() {
-                    report(&|| path().field("spot"), Error::Missing);
-                }
+            if self.type_ == Type::Spot && self.spot.is_none() {
+                report(&|| path().field("spot"), Error::Missing);
             }
 
             self.type_.validate(root, || path().field("type"), report);
@@ -159,50 +156,6 @@ pub mod khr_lights_punctual {
 
     fn outer_cone_angle_default() -> f32 {
         std::f32::consts::FRAC_PI_4
-    }
-
-    impl<'de> de::Deserialize<'de> for Checked<Type> {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
-        {
-            struct Visitor;
-            impl<'de> de::Visitor<'de> for Visitor {
-                type Value = Checked<Type>;
-
-                fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    write!(f, "any of: {:?}", VALID_TYPES)
-                }
-
-                fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-                where
-                    E: de::Error,
-                {
-                    use self::Type::*;
-                    use crate::validation::Checked::*;
-                    Ok(match value {
-                        "directional" => Valid(Directional),
-                        "point" => Valid(Point),
-                        "spot" => Valid(Spot),
-                        _ => Invalid,
-                    })
-                }
-            }
-            deserializer.deserialize_str(Visitor)
-        }
-    }
-
-    impl ser::Serialize for Type {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ser::Serializer,
-        {
-            serializer.serialize_str(match *self {
-                Type::Directional => "directional",
-                Type::Point => "point",
-                Type::Spot => "spot",
-            })
-        }
     }
 }
 
