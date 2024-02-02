@@ -1,18 +1,10 @@
-use crate::validation::{Checked, Error, Validate};
+use crate::validation::{Error, Validate};
 use crate::{accessor, extensions, scene, Extras, Index, Path, Root};
 use gltf_derive::Validate;
-use serde::{de, ser};
 use serde_derive::{Deserialize, Serialize};
-use std::fmt;
-
-/// All valid animation interpolation algorithms.
-pub const VALID_INTERPOLATIONS: &[&str] = &["LINEAR", "STEP", "CUBICSPLINE"];
-
-/// All valid animation property names.
-pub const VALID_PROPERTIES: &[&str] = &["translation", "rotation", "scale", "weights"];
 
 /// Specifies an interpolation algorithm.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Interpolation {
     /// Linear interpolation.
     ///
@@ -20,6 +12,8 @@ pub enum Interpolation {
     /// When targeting a rotation, spherical linear interpolation (slerp) should be
     /// used to interpolate quaternions. The number output of elements must equal
     /// the number of input elements.
+    #[default]
+    #[serde(rename = "LINEAR")]
     Linear = 1,
 
     /// Step interpolation.
@@ -27,6 +21,7 @@ pub enum Interpolation {
     /// The animated values remain constant to the output of the first keyframe,
     /// until the next keyframe. The number of output elements must equal the number
     /// of input elements.
+    #[serde(rename = "STEP")]
     Step,
 
     /// Cubic spline interpolation.
@@ -36,21 +31,28 @@ pub enum Interpolation {
     /// input elements. For each input element, the output stores three elements, an
     /// in-tangent, a spline vertex, and an out-tangent. There must be at least two
     /// keyframes when using this interpolation
+    #[serde(rename = "CUBICSPLINE")]
     CubicSpline,
 }
+crate::trivial_impl_validate!(Interpolation);
 
 /// Specifies a property to animate.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Property {
     /// XYZ translation vector.
+    #[serde(rename = "translation")]
     Translation = 1,
     /// XYZW rotation quaternion.
+    #[serde(rename = "rotation")]
     Rotation,
     /// XYZ scale vector.
+    #[serde(rename = "scale")]
     Scale,
     /// Weights of morph targets.
+    #[serde(rename = "weights")]
     MorphTargetWeights,
 }
+crate::trivial_impl_validate!(Property);
 
 /// A keyframe animation.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -122,7 +124,7 @@ pub struct Target {
 
     /// The name of the node's property to modify or the 'weights' of the
     /// morph targets it instantiates.
-    pub path: Checked<Property>,
+    pub path: Property,
 }
 
 /// Defines a keyframe graph but not its target.
@@ -143,7 +145,7 @@ pub struct Sampler {
 
     /// The interpolation algorithm.
     #[serde(default)]
-    pub interpolation: Checked<Interpolation>,
+    pub interpolation: Interpolation,
 
     /// The index of an accessor containing keyframe output values.
     pub output: Index<accessor::Accessor>,
@@ -163,101 +165,5 @@ impl Validate for Animation {
                 report(&path, Error::IndexOutOfBounds);
             }
         }
-    }
-}
-
-impl Default for Interpolation {
-    fn default() -> Self {
-        Interpolation::Linear
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<Interpolation> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<Interpolation>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_INTERPOLATIONS)
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::Interpolation::*;
-                use crate::validation::Checked::*;
-                Ok(match value {
-                    "LINEAR" => Valid(Linear),
-                    "STEP" => Valid(Step),
-                    "CUBICSPLINE" => Valid(CubicSpline),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_str(Visitor)
-    }
-}
-
-impl ser::Serialize for Interpolation {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(match *self {
-            Interpolation::Linear => "LINEAR",
-            Interpolation::Step => "STEP",
-            Interpolation::CubicSpline => "CUBICSPLINE",
-        })
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<Property> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<Property>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_PROPERTIES)
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::Property::*;
-                use crate::validation::Checked::*;
-                Ok(match value {
-                    "translation" => Valid(Translation),
-                    "rotation" => Valid(Rotation),
-                    "scale" => Valid(Scale),
-                    "weights" => Valid(MorphTargetWeights),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_str(Visitor)
-    }
-}
-
-impl ser::Serialize for Property {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(match *self {
-            Property::Translation => "translation",
-            Property::Rotation => "rotation",
-            Property::Scale => "scale",
-            Property::MorphTargetWeights => "weights",
-        })
     }
 }

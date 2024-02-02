@@ -199,7 +199,7 @@ impl<'a> Target<'a> {
     /// Returns the node's property to modify or the 'weights' of the morph
     /// targets it instantiates.
     pub fn property(&self) -> Property {
-        self.json.path.unwrap()
+        self.json.path
     }
 }
 
@@ -230,7 +230,7 @@ impl<'a> Sampler<'a> {
 
     /// Returns the keyframe interpolation algorithm.
     pub fn interpolation(&self) -> Interpolation {
-        self.json.interpolation.unwrap()
+        self.json.interpolation
     }
 
     /// Returns the accessor containing the keyframe output values.
