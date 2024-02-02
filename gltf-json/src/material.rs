@@ -1,40 +1,26 @@
-use crate::validation::{Checked, Validate};
+use crate::validation::Validate;
 use crate::{extensions, texture, Extras, Index};
 use gltf_derive::Validate;
-use serde::{de, ser};
 use serde_derive::{Deserialize, Serialize};
-use std::fmt;
-
-/// All valid alpha modes.
-pub const VALID_ALPHA_MODES: &[&str] = &["OPAQUE", "MASK", "BLEND"];
 
 /// The alpha rendering mode of a material.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum AlphaMode {
     /// The alpha value is ignored and the rendered output is fully opaque.
+    #[serde(rename = "OPAQUE")]
     Opaque = 1,
 
     /// The rendered output is either fully opaque or fully transparent depending on
     /// the alpha value and the specified alpha cutoff value.
+    #[serde(rename = "MASK")]
     Mask,
 
     /// The alpha value is used, to determine the transparency of the rendered output.
     /// The alpha cutoff value is ignored.
+    #[serde(rename = "BLEND")]
     Blend,
 }
-
-impl ser::Serialize for AlphaMode {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        match *self {
-            AlphaMode::Opaque => serializer.serialize_str("OPAQUE"),
-            AlphaMode::Mask => serializer.serialize_str("MASK"),
-            AlphaMode::Blend => serializer.serialize_str("BLEND"),
-        }
-    }
-}
+impl Validate for AlphaMode {}
 
 /// The material appearance of a primitive.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
@@ -63,7 +49,7 @@ pub struct Material {
     ///   background using the normal painting operation (i.e. the Porter and
     ///   Duff over operator).
     #[serde(rename = "alphaMode")]
-    pub alpha_mode: Checked<AlphaMode>,
+    pub alpha_mode: AlphaMode,
 
     /// Specifies whether the material is double-sided.
     ///
@@ -258,37 +244,6 @@ impl Validate for AlphaCutoff {}
 impl Default for AlphaMode {
     fn default() -> Self {
         AlphaMode::Opaque
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<AlphaMode> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<AlphaMode>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_ALPHA_MODES)
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::AlphaMode::*;
-                use crate::validation::Checked::*;
-                Ok(match value {
-                    "OPAQUE" => Valid(Opaque),
-                    "MASK" => Valid(Mask),
-                    "BLEND" => Valid(Blend),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_str(Visitor)
     }
 }
 

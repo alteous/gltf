@@ -70,7 +70,7 @@ impl<'a> Material<'a> {
     ///   using the normal painting operation (i.e. the Porter and Duff over
     ///   operator).
     pub fn alpha_mode(&self) -> AlphaMode {
-        self.json.alpha_mode.unwrap()
+        self.json.alpha_mode
     }
 
     /// Specifies whether the material is double-sided.
