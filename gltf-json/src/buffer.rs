@@ -20,7 +20,7 @@ pub enum Target {
     /// Corresponds to `GL_ELEMENT_ARRAY_BUFFER`.
     ElementArrayBuffer = 34_963,
 }
-crate::trivial_impl_validate!(Target);
+impl Validate for Target {}
 
 /// Distance between individual items in a buffer view, measured in bytes.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]

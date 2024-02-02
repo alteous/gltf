@@ -34,7 +34,7 @@ pub enum Interpolation {
     #[serde(rename = "CUBICSPLINE")]
     CubicSpline,
 }
-crate::trivial_impl_validate!(Interpolation);
+impl Validate for Interpolation {}
 
 /// Specifies a property to animate.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -52,7 +52,7 @@ pub enum Property {
     #[serde(rename = "weights")]
     MorphTargetWeights,
 }
-crate::trivial_impl_validate!(Property);
+impl Validate for Property {}
 
 /// A keyframe animation.
 #[derive(Clone, Debug, Deserialize, Serialize)]

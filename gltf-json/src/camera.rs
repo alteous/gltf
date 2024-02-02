@@ -14,7 +14,7 @@ pub enum Type {
     #[serde(rename = "orthographic")]
     Orthographic,
 }
-crate::trivial_impl_validate!(Type);
+impl Validate for Type {}
 
 /// A camera's projection.
 ///

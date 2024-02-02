@@ -22,7 +22,7 @@ pub enum ComponentType {
     /// Corresponds to `GL_FLOAT`.
     F32 = 5126,
 }
-crate::trivial_impl_validate!(ComponentType);
+impl Validate for ComponentType {}
 
 impl From<sparse::IndexType> for ComponentType {
     fn from(value: sparse::IndexType) -> Self {
@@ -59,7 +59,7 @@ pub enum Type {
     #[serde(rename = "MAT4")]
     Mat4,
 }
-crate::trivial_impl_validate!(Type);
+impl Validate for Type {}
 
 /// Contains data structures for sparse storage.
 pub mod sparse {
@@ -78,7 +78,7 @@ pub mod sparse {
         /// Corresponds to `GL_UNSIGNED_INT`.
         U32 = super::ComponentType::U32 as u32,
     }
-    crate::trivial_impl_validate!(IndexType);
+    impl Validate for IndexType {}
 
     impl IndexType {
         /// Returns the number of bytes this value represents.

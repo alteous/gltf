@@ -73,7 +73,7 @@ pub mod khr_lights_punctual {
         #[serde(rename = "spot")]
         Spot,
     }
-    crate::trivial_impl_validate!(Type);
+    impl Validate for Type {}
 
     #[derive(Clone, Debug, Deserialize, Serialize)]
     pub struct Light {

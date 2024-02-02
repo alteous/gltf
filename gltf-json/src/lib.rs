@@ -105,18 +105,3 @@ pub mod serialize {
         to_string, to_string_pretty, to_value, to_vec, to_vec_pretty, to_writer, to_writer_pretty,
     };
 }
-
-#[macro_export]
-macro_rules! trivial_impl_validate {
-    ($ty:ty) => {
-        impl $crate::validation::Validate for $ty {
-            fn validate<P, R>(&self, _root: &Root, _path: P, _report: &mut R)
-            where
-                P: Fn() -> Path,
-                R: FnMut(&dyn Fn() -> Path, Error),
-            {
-                // nop
-            }
-        }
-    };
-}
