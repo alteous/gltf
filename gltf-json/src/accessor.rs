@@ -65,9 +65,10 @@ crate::trivial_impl_validate!(Type);
 pub mod sparse {
     use super::*;
     use crate::extensions;
+    use serde_repr::{Deserialize_repr, Serialize_repr};
 
     /// Data type specific to sparse indices.
-    #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+    #[derive(Clone, Copy, Debug, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
     #[repr(u32)]
     pub enum IndexType {
         /// Corresponds to `GL_UNSIGNED_BYTE`.
