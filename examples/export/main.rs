@@ -2,7 +2,6 @@ use gltf_json as json;
 
 use std::{fs, mem};
 
-use json::validation::Checked::Valid;
 use json::validation::USize64;
 use std::borrow::Cow;
 use std::io::Write;
@@ -128,15 +127,15 @@ fn export(output: Output) {
     let primitive = json::mesh::Primitive {
         attributes: {
             let mut map = std::collections::BTreeMap::new();
-            map.insert(Valid(json::mesh::Semantic::Positions), positions);
-            map.insert(Valid(json::mesh::Semantic::Colors(0)), colors);
+            map.insert(json::mesh::Semantic::Positions, positions);
+            map.insert(json::mesh::Semantic::Colors(0), colors);
             map
         },
         extensions: Default::default(),
         extras: Default::default(),
         indices: None,
         material: None,
-        mode: Valid(json::mesh::Mode::Triangles),
+        mode: json::mesh::Mode::Triangles,
         targets: None,
     };
 

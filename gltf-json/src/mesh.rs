@@ -5,6 +5,7 @@ use serde::ser;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::from_value;
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use serde_with::DeserializeFromStr;
 use std::collections::BTreeMap;
 
 /// All valid semantic names for Morph targets.
@@ -177,8 +178,7 @@ pub struct MorphTarget {
 }
 
 /// Vertex attribute semantic name.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
-#[serde(try_from = "String")]
+#[derive(Clone, Debug, DeserializeFromStr, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub enum Semantic {
     /// Extra attribute name.
     Extras(String),
@@ -217,11 +217,11 @@ impl Mode {
     }
 }
 
-impl TryFrom<String> for Semantic {
-    type Error = <u32 as std::str::FromStr>::Err;
+impl std::str::FromStr for Semantic {
+    type Err = <u32 as std::str::FromStr>::Err;
 
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        match s.as_str() {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
             "NORMAL" => Ok(Self::Normals),
             "POSITION" => Ok(Self::Positions),
             "TANGENT" => Ok(Self::Tangents),
@@ -229,8 +229,8 @@ impl TryFrom<String> for Semantic {
             _ if s.starts_with("TEXCOORD_") => s["TEXCOORD_".len()..].parse().map(Self::TexCoords),
             _ if s.starts_with("JOINTS_") => s["JOINTS_".len()..].parse().map(Self::Joints),
             _ if s.starts_with("WEIGHTS_") => s["WEIGHTS_".len()..].parse().map(Self::Weights),
-            _ if s.starts_with(' ') => Ok(Self::Extras(s[1..].to_owned())),
-            _ => Ok(Self::Extensions(s)),
+            _ if s.starts_with('_') => Ok(Self::Extras(s[1..].to_owned())),
+            _ => Ok(Self::Extensions(s.to_owned())),
         }
     }
 }
@@ -256,6 +256,31 @@ impl ToString for Semantic {
             Self::Weights(set) => format!("WEIGHTS_{}", set),
             Self::Extras(ref name) => format!("_{name}"),
             Self::Extensions(ref name) => name.clone(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Semantic;
+
+    #[test]
+    fn semantic() {
+        let test_cases = [
+            ("POSITION", Semantic::Positions),
+            ("NORMAL", Semantic::Normals),
+            ("TANGENT", Semantic::Tangents),
+            ("COLOR_0", Semantic::Colors(0)),
+            ("TEXCOORD_1", Semantic::TexCoords(1)),
+            ("JOINTS_2", Semantic::Joints(2)),
+            ("WEIGHTS_3", Semantic::Weights(3)),
+            ("_EXTRA", Semantic::Extras("EXTRA".to_string())),
+            ("EXTENSION", Semantic::Extensions("EXTENSION".to_string())),
+        ];
+
+        for (name, semantic) in test_cases {
+            assert_eq!(Ok(semantic.clone()), name.parse());
+            assert_eq!(name, &semantic.to_string());
         }
     }
 }
