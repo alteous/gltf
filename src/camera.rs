@@ -77,7 +77,7 @@ impl<'a> Camera<'a> {
 
     /// Returns the camera's projection.
     pub fn projection(&self) -> Projection {
-        match self.json.type_.unwrap() {
+        match self.json.type_ {
             json::camera::Type::Orthographic => {
                 let json = self.json.orthographic.as_ref().unwrap();
                 Projection::Orthographic(Orthographic::new(self.document, json))

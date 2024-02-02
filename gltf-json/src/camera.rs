@@ -1,22 +1,20 @@
-use crate::validation::{Checked, Error, Validate};
+use crate::validation::{Error, Validate};
 use crate::{extensions, Extras, Path, Root};
 use gltf_derive::Validate;
-use serde::{de, ser};
 use serde_derive::{Deserialize, Serialize};
-use std::fmt;
-
-/// All valid camera types.
-pub const VALID_CAMERA_TYPES: &[&str] = &["perspective", "orthographic"];
 
 /// Specifies the camera type.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Type {
     /// A perspective projection.
+    #[serde(rename = "perspective")]
     Perspective = 1,
 
     /// An orthographic projection.
+    #[serde(rename = "orthographic")]
     Orthographic,
 }
+crate::trivial_impl_validate!(Type);
 
 /// A camera's projection.
 ///
@@ -41,7 +39,7 @@ pub struct Camera {
 
     /// Specifies if the camera uses a perspective or orthographic projection.
     #[serde(rename = "type")]
-    pub type_: Checked<Type>,
+    pub type_: Type,
 
     /// Extension specific data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -128,47 +126,5 @@ impl Validate for Camera {
             .validate(root, || path().field("extensions"), report);
         self.extras
             .validate(root, || path().field("extras"), report);
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<Type> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<Type>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_CAMERA_TYPES)
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::Type::*;
-                use crate::validation::Checked::*;
-                Ok(match value {
-                    "perspective" => Valid(Perspective),
-                    "orthographic" => Valid(Orthographic),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_str(Visitor)
-    }
-}
-
-impl ser::Serialize for Type {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        match *self {
-            Type::Perspective => serializer.serialize_str("perspective"),
-            Type::Orthographic => serializer.serialize_str("orthographic"),
-        }
     }
 }
