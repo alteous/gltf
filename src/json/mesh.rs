@@ -1,5 +1,5 @@
-use crate::validation::{Error, Validate};
-use crate::{accessor, extensions, material, Extras, Index};
+use crate::json::validation::{Error, Validate};
+use crate::json::{accessor, extensions, material, Extras, Index, Path, Root};
 use gltf_derive::Validate;
 use serde::ser;
 use serde_derive::{Deserialize, Serialize};
@@ -109,10 +109,10 @@ fn is_primitive_mode_default(mode: &Mode) -> bool {
 }
 
 impl Validate for Primitive {
-    fn validate<P, R>(&self, root: &crate::Root, path: P, report: &mut R)
+    fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
     where
-        P: Fn() -> crate::Path,
-        R: FnMut(&dyn Fn() -> crate::Path, crate::validation::Error),
+        P: Fn() -> Path,
+        R: FnMut(&dyn Fn() -> Path, Error),
     {
         // Generated part
         self.attributes

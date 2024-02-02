@@ -1,5 +1,5 @@
 #[cfg(feature = "KHR_texture_transform")]
-use crate::{extras::Extras, validation::Validate};
+use crate::json::{extras::Extras, validation::Validate};
 use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "extensions")]
@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 /// Texture sampler properties for filtering and wrapping modes.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Sampler {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -16,6 +17,7 @@ pub struct Sampler {
 /// A texture and its sampler.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Texture {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -24,6 +26,7 @@ pub struct Texture {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 /// Reference to a `Texture`.
 pub struct Info {
+    /// Support for the `KHR_texture_transform` extension.
     #[cfg(feature = "KHR_texture_transform")]
     #[serde(
         default,
@@ -31,6 +34,8 @@ pub struct Info {
         skip_serializing_if = "Option::is_none"
     )]
     pub texture_transform: Option<TextureTransform>,
+
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -48,7 +53,7 @@ pub struct Info {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 #[serde(default, rename_all = "camelCase")]
 pub struct TextureTransform {
-    // The offset of the UV coordinate origin as a factor of the texture dimensions.
+    /// The offset of the UV coordinate origin as a factor of the texture dimensions.
     pub offset: TextureTransformOffset,
 
     /// Rotate the UVs by this many radians counter-clockwise around the origin.

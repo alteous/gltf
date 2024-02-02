@@ -2,7 +2,7 @@
 use serde_json::{Map, Value};
 
 use crate::math::*;
-use crate::{Camera, Document, Mesh, Skin};
+use crate::{json, Camera, Document, Mesh, Skin};
 
 /// Iterators.
 pub mod iter;

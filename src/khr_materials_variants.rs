@@ -1,4 +1,4 @@
-use crate::{Document, Material};
+use crate::{json, Document, Material};
 
 /// A variant.
 pub struct Variant<'a> {

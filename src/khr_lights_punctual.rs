@@ -1,5 +1,5 @@
+use crate::json::Extras;
 use crate::Document;
-use gltf_json::Extras;
 
 /// A light in the scene.
 pub struct Light<'a> {
@@ -11,7 +11,7 @@ pub struct Light<'a> {
     index: usize,
 
     /// The corresponding JSON struct.
-    json: &'a json::extensions::scene::khr_lights_punctual::Light,
+    json: &'a crate::json::extensions::scene::khr_lights_punctual::Light,
 }
 
 impl<'a> Light<'a> {
@@ -19,7 +19,7 @@ impl<'a> Light<'a> {
     pub(crate) fn new(
         document: &'a Document,
         index: usize,
-        json: &'a json::extensions::scene::khr_lights_punctual::Light,
+        json: &'a crate::json::extensions::scene::khr_lights_punctual::Light,
     ) -> Self {
         Self {
             document,
@@ -63,7 +63,7 @@ impl<'a> Light<'a> {
 
     /// Specifies the light subcategory.
     pub fn kind(&self) -> Kind {
-        use json::extensions::scene::khr_lights_punctual::Type;
+        use crate::json::extensions::scene::khr_lights_punctual::Type;
         match self.json.type_ {
             Type::Directional => Kind::Directional,
             Type::Point => Kind::Point,

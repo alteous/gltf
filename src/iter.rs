@@ -10,7 +10,7 @@ use crate::mesh::Mesh;
 use crate::scene::{Node, Scene};
 use crate::skin::Skin;
 use crate::texture::{Sampler, Texture};
-use crate::Document;
+use crate::{json, Document};
 
 /// An `Iterator` that visits extension strings used by a glTF asset.
 #[derive(Clone, Debug)]

@@ -1,5 +1,4 @@
-#[allow(unused)]
-use crate::{buffer, Document, Error, Result};
+use crate::{buffer, json, Document, Error, Result};
 
 #[cfg(feature = "import")]
 #[cfg_attr(docsrs, doc(cfg(feature = "import")))]

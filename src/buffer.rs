@@ -1,9 +1,9 @@
 #[cfg(feature = "import")]
 use std::ops;
 
-use crate::Document;
+use crate::{json, Document};
 
-pub use json::buffer::Target;
+pub use crate::json::buffer::Target;
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 

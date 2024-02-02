@@ -56,12 +56,12 @@ pub mod iter;
 #[cfg_attr(docsrs, doc(cfg(feature = "utils")))]
 pub mod util;
 
-use crate::{Accessor, Buffer, Document, Material};
+use crate::{json, Accessor, Buffer, Document, Material};
 
 #[cfg(feature = "utils")]
 use crate::accessor;
 
-pub use json::mesh::{Mode, Semantic};
+pub use crate::json::mesh::{Mode, Semantic};
 
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};

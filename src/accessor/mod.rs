@@ -55,10 +55,10 @@
 //! # }
 //! ```
 
-use crate::{buffer, Document};
+use crate::{buffer, json, Document};
 
-pub use json::accessor::ComponentType as DataType;
-pub use json::accessor::Type as Dimensions;
+pub use crate::json::accessor::ComponentType as DataType;
+pub use crate::json::accessor::Type as Dimensions;
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 

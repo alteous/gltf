@@ -1,6 +1,7 @@
 use std::slice;
 
 use crate::animation::{Animation, Channel, Sampler};
+use crate::json;
 
 /// An `Iterator` that visits the channels of an animation.
 #[derive(Clone, Debug)]

@@ -3,9 +3,10 @@ use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 
-/// Image data used to create a texture.
+/// Joints and matrices defining a skin.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
-pub struct Image {
+pub struct Skin {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,

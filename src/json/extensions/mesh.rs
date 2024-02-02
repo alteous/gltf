@@ -9,6 +9,7 @@ use serde_json::{Map, Value};
 /// the scene.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Mesh {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -17,6 +18,7 @@ pub struct Mesh {
 /// Geometry to be rendered with the given material.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Primitive {
+    /// Support for the `KHR_materials_variants` extension.
     #[cfg(feature = "KHR_materials_variants")]
     #[serde(
         default,
@@ -24,20 +26,27 @@ pub struct Primitive {
         skip_serializing_if = "Option::is_none"
     )]
     pub khr_materials_variants: Option<KhrMaterialsVariants>,
+
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
 }
 
+/// Support for the `KHR_materials_variants` extension.
 #[cfg(feature = "KHR_materials_variants")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct KhrMaterialsVariants {
+    #[allow(missing_docs)]
     pub mappings: Vec<Mapping>,
 }
 
+#[allow(missing_docs)]
 #[cfg(feature = "KHR_materials_variants")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Mapping {
+    #[allow(missing_docs)]
     pub material: u32,
+    #[allow(missing_docs)]
     pub variants: Vec<u32>,
 }

@@ -15,6 +15,7 @@ use serde_json::{Map, Value};
 /// be present.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Node {
+    /// Support for the `KHR_lights_punctual` extension.
     #[cfg(feature = "KHR_lights_punctual")]
     #[serde(
         default,
@@ -23,20 +24,24 @@ pub struct Node {
     )]
     pub khr_lights_punctual: Option<khr_lights_punctual::KhrLightsPunctual>,
 
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
 }
 
+/// Support for the `KHR_lights_punctual` extension.
 #[cfg(feature = "KHR_lights_punctual")]
 pub mod khr_lights_punctual {
-    use crate::validation::{Error, Validate};
-    use crate::{Extras, Index, Path, Root};
+    use crate::json::validation::{Error, Validate};
+    use crate::json::{Extras, Index, Path, Root};
     use gltf_derive::Validate;
     use serde_derive::{Deserialize, Serialize};
 
+    /// Support for the `KHR_lights_punctual` extension.
     #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
     pub struct KhrLightsPunctual {
+        #[allow(missing_docs)]
         pub light: Index<Light>,
     }
 
@@ -75,6 +80,7 @@ pub mod khr_lights_punctual {
     }
     impl Validate for Type {}
 
+    #[allow(missing_docs)]
     #[derive(Clone, Debug, Deserialize, Serialize)]
     pub struct Light {
         /// Color of the light source.
@@ -159,12 +165,14 @@ pub mod khr_lights_punctual {
     }
 }
 
+/// Support for the `KHR_materials_variants` extension.
 #[cfg(feature = "KHR_materials_variants")]
 pub mod khr_materials_variants {
-    use crate::validation::{Error, Validate};
-    use crate::{Path, Root};
+    use crate::json::validation::{Error, Validate};
+    use crate::json::{Path, Root};
     use serde_derive::{Deserialize, Serialize};
 
+    #[allow(missing_docs)]
     #[derive(Clone, Debug, Deserialize, Serialize)]
     pub struct Variant {
         pub name: String,
@@ -184,6 +192,7 @@ pub mod khr_materials_variants {
 /// The root `Node`s of a scene.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Scene {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,

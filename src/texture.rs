@@ -1,6 +1,6 @@
-use crate::{image, Document};
+use crate::{image, json, Document};
 
-pub use json::texture::{MagFilter, MinFilter, WrappingMode};
+pub use crate::json::texture::{MagFilter, MinFilter, WrappingMode};
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::hash::Hash;
 
-use crate::{Path, Root};
+use crate::json::{Path, Root};
 
 /// Trait for validating glTF JSON data so that the library can function without panicking.
 pub trait Validate {

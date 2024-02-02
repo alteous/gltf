@@ -1,7 +1,7 @@
 use std::{collections, iter, slice};
 
 use super::{Attribute, Mesh, MorphTarget, Primitive};
-use crate::Document;
+use crate::{json, Document};
 
 /// An `Iterator` that visits the morph targets of a `Primitive`.
 #[derive(Clone, Debug)]

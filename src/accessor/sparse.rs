@@ -1,7 +1,7 @@
-use crate::{buffer, Document};
+use crate::{buffer, json, Document};
 
 #[doc(inline)]
-pub use json::accessor::sparse::IndexType;
+pub use crate::json::accessor::sparse::IndexType;
 
 /// Indices of those attributes that deviate from their initialization value.
 pub struct Indices<'a> {

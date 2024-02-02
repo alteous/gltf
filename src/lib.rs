@@ -87,9 +87,6 @@ extern crate image as image_crate;
 #[macro_use]
 extern crate lazy_static;
 
-/// Contains (de)serializable data structures that match the glTF JSON text.
-pub extern crate gltf_json as json;
-
 /// Accessors for reading vertex attributes from buffer views.
 pub mod accessor;
 
@@ -115,6 +112,9 @@ mod import;
 
 /// Iterators for walking the glTF node hierarchy.
 pub mod iter;
+
+/// Contains (de)serializable data structures that match the glTF JSON text.
+pub mod json;
 
 /// Support for the `KHR_lights_punctual` extension.
 #[cfg(feature = "KHR_lights_punctual")]

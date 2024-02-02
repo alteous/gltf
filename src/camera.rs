@@ -1,4 +1,4 @@
-use crate::Document;
+use crate::{json, Document};
 
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};

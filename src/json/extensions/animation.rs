@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 /// A keyframe animation.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Animation {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,

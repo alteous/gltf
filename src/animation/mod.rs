@@ -1,9 +1,9 @@
-use crate::{accessor, scene, Document};
+use crate::{accessor, json, scene, Document};
 
 #[cfg(feature = "utils")]
 use crate::Buffer;
 
-pub use json::animation::{Interpolation, Property};
+pub use crate::json::animation::{Interpolation, Property};
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 

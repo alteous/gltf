@@ -1,10 +1,8 @@
-use gltf_json as json;
-
-use std::{fs, mem};
-
-use json::validation::USize64;
+use gltf::json;
+use gltf::json::validation::USize64;
 use std::borrow::Cow;
 use std::io::Write;
+use std::{fs, mem};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum Output {
@@ -71,7 +69,7 @@ fn export(output: Output) {
 
     let (min, max) = bounding_coords(&triangle_vertices);
 
-    let mut root = gltf_json::Root::default();
+    let mut root = json::Root::default();
 
     let buffer_length = triangle_vertices.len() * mem::size_of::<Vertex>();
     let buffer = root.push(json::Buffer {

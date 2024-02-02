@@ -1,6 +1,5 @@
-use crate::validation::{Error, USize64, Validate};
-use crate::{buffer, extensions, Extras, Index, Path, Root};
-use gltf_derive::Validate;
+use crate::json::validation::{Error, USize64, Validate};
+use crate::json::{buffer, extensions, Extras, Index, Path, Root};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -64,7 +63,9 @@ impl Validate for Type {}
 /// Contains data structures for sparse storage.
 pub mod sparse {
     use super::*;
-    use crate::extensions;
+    use crate::json::extensions;
+    use crate::json::validation::Validate;
+    use gltf_derive::Validate;
     use serde_repr::{Deserialize_repr, Serialize_repr};
 
     /// Data type specific to sparse indices.

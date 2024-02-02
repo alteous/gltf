@@ -1,6 +1,6 @@
 use std::slice;
 
-use crate::{Document, Node};
+use crate::{json, Document, Node};
 
 /// An `Iterator` that visits the nodes in a scene.
 #[derive(Clone, Debug)]

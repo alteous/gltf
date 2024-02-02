@@ -1,7 +1,7 @@
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 
-use crate::{Accessor, Document, Node};
+use crate::{json, Accessor, Document, Node};
 
 #[cfg(feature = "utils")]
 use crate::Buffer;

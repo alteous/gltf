@@ -1,5 +1,5 @@
 #[allow(unused_imports)] // different features use different imports
-use crate::{material::StrengthFactor, texture, validation::Validate, Extras};
+use crate::json::{material::StrengthFactor, texture, validation::Validate, Extras};
 use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "extensions")]
@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 /// The material appearance of a primitive.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Material {
+    /// Support for the `KHR_materials_pbrSpecularGlossiness` extension.
     #[cfg(feature = "KHR_materials_pbrSpecularGlossiness")]
     #[serde(
         default,
@@ -16,6 +17,7 @@ pub struct Material {
     )]
     pub pbr_specular_glossiness: Option<PbrSpecularGlossiness>,
 
+    /// Support for the `KHR_materials_unlit` extension.
     #[cfg(feature = "KHR_materials_unlit")]
     #[serde(
         default,
@@ -24,6 +26,7 @@ pub struct Material {
     )]
     pub unlit: Option<Unlit>,
 
+    /// Support for the `KHR_materials_transmission` extension.
     #[cfg(feature = "KHR_materials_transmission")]
     #[serde(
         default,
@@ -32,6 +35,7 @@ pub struct Material {
     )]
     pub transmission: Option<Transmission>,
 
+    /// Support for the `KHR_materials_volume` extension.
     #[cfg(feature = "KHR_materials_volume")]
     #[serde(
         default,
@@ -40,6 +44,7 @@ pub struct Material {
     )]
     pub volume: Option<Volume>,
 
+    /// Support for the `KHR_materials_specular` extension.
     #[cfg(feature = "KHR_materials_specular")]
     #[serde(
         default,
@@ -48,6 +53,7 @@ pub struct Material {
     )]
     pub specular: Option<Specular>,
 
+    /// Support for the `KHR_materials_ior` extension.
     #[cfg(feature = "KHR_materials_ior")]
     #[serde(
         default,
@@ -56,6 +62,7 @@ pub struct Material {
     )]
     pub ior: Option<Ior>,
 
+    /// Support for the `KHR_materials_emissive_strength` extension.
     #[cfg(feature = "KHR_materials_emissive_strength")]
     #[serde(
         default,
@@ -64,6 +71,7 @@ pub struct Material {
     )]
     pub emissive_strength: Option<EmissiveStrength>,
 
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -73,6 +81,7 @@ pub struct Material {
 /// material model from Physically-Based Rendering (PBR) methodology.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct PbrMetallicRoughness {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -124,6 +133,7 @@ pub struct PbrSpecularGlossiness {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub specular_glossiness_texture: Option<texture::Info>,
 
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -137,6 +147,7 @@ pub struct PbrSpecularGlossiness {
 /// Defines the normal texture of a material.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct NormalTexture {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -145,6 +156,7 @@ pub struct NormalTexture {
 /// Defines the occlusion texture of a material.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct OcclusionTexture {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -200,6 +212,7 @@ impl Default for TransmissionFactor {
 #[cfg(feature = "KHR_materials_transmission")]
 impl Validate for TransmissionFactor {}
 
+/// Support for the `KHR_materials_transmission` extension.
 #[cfg(feature = "KHR_materials_transmission")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 #[serde(default, rename_all = "camelCase")]
@@ -242,6 +255,7 @@ impl Default for IndexOfRefraction {
 #[cfg(feature = "KHR_materials_ior")]
 impl Validate for IndexOfRefraction {}
 
+/// Support for the `KHR_materials_ior` extension.
 #[cfg(feature = "KHR_materials_ior")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 #[serde(default, rename_all = "camelCase")]
@@ -274,6 +288,7 @@ impl Default for EmissiveStrengthFactor {
 #[cfg(feature = "KHR_materials_emissive_strength")]
 impl Validate for EmissiveStrengthFactor {}
 
+/// Support for the `KHR_materials_emissive_strength` extension.
 #[cfg(feature = "KHR_materials_emissive_strength")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 #[serde(default, rename_all = "camelCase")]
@@ -327,6 +342,7 @@ impl Default for AttenuationColor {
 #[cfg(feature = "KHR_materials_volume")]
 impl Validate for AttenuationColor {}
 
+/// Support for the `KHR_materials_volume` extension.
 #[cfg(feature = "KHR_materials_volume")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 #[serde(default, rename_all = "camelCase")]
@@ -388,6 +404,7 @@ impl Default for SpecularColorFactor {
 #[cfg(feature = "KHR_materials_specular")]
 impl Validate for SpecularColorFactor {}
 
+/// Support for the `KHR_materials_specular` extension.
 #[cfg(feature = "KHR_materials_specular")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 #[serde(default, rename_all = "camelCase")]

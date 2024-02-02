@@ -1,5 +1,5 @@
-use crate::validation::Validate;
-use crate::{camera, extensions, mesh, scene, skin, Extras, Index};
+use crate::json::validation::Validate;
+use crate::json::{camera, extensions, mesh, scene, skin, Extras, Index};
 use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 

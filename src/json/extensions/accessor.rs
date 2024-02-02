@@ -24,6 +24,7 @@ pub mod sparse {
 /// A typed view into a buffer view.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Accessor {
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,

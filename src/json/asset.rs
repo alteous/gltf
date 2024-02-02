@@ -1,4 +1,4 @@
-use crate::{extensions, Extras};
+use crate::json::{extensions, Extras};
 use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 

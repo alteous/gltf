@@ -1,6 +1,6 @@
-use crate::{texture, Document};
+use crate::{json, texture, Document};
 
-pub use json::material::AlphaMode;
+pub use crate::json::material::AlphaMode;
 #[cfg(feature = "extensions")]
 use serde_json::{Map, Value};
 

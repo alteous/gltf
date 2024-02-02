@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 /// The root object of a glTF 2.0 asset.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct Root {
+    /// Support for the `KHR_lights_punctual` extension.
     #[cfg(feature = "KHR_lights_punctual")]
     #[serde(
         default,
@@ -14,6 +15,7 @@ pub struct Root {
     )]
     pub khr_lights_punctual: Option<KhrLightsPunctual>,
 
+    /// Support for the `KHR_materials_variants` extension.
     #[cfg(feature = "KHR_materials_variants")]
     #[serde(
         default,
@@ -22,24 +24,28 @@ pub struct Root {
     )]
     pub khr_materials_variants: Option<KhrMaterialsVariants>,
 
+    /// Extension data unhandled by this crate version.
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
 }
 
+/// Support for the `KHR_lights_punctual` extension.
 #[cfg(feature = "KHR_lights_punctual")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct KhrLightsPunctual {
     /// Lights at this node.
-    pub lights: Vec<crate::extensions::scene::khr_lights_punctual::Light>,
+    pub lights: Vec<crate::json::extensions::scene::khr_lights_punctual::Light>,
 }
 
 #[cfg(feature = "KHR_lights_punctual")]
-impl crate::root::Get<crate::extensions::scene::khr_lights_punctual::Light> for crate::Root {
+impl crate::json::root::Get<crate::json::extensions::scene::khr_lights_punctual::Light>
+    for crate::json::Root
+{
     fn get(
         &self,
-        id: crate::Index<crate::extensions::scene::khr_lights_punctual::Light>,
-    ) -> Option<&crate::extensions::scene::khr_lights_punctual::Light> {
+        id: crate::json::Index<crate::json::extensions::scene::khr_lights_punctual::Light>,
+    ) -> Option<&crate::json::extensions::scene::khr_lights_punctual::Light> {
         if let Some(extensions) = self.extensions.as_ref() {
             if let Some(khr_lights_punctual) = extensions.khr_lights_punctual.as_ref() {
                 khr_lights_punctual.lights.get(id.value())
@@ -53,8 +59,8 @@ impl crate::root::Get<crate::extensions::scene::khr_lights_punctual::Light> for 
 }
 
 #[cfg(feature = "KHR_lights_punctual")]
-impl AsRef<[crate::extensions::scene::khr_lights_punctual::Light]> for crate::Root {
-    fn as_ref(&self) -> &[crate::extensions::scene::khr_lights_punctual::Light] {
+impl AsRef<[crate::json::extensions::scene::khr_lights_punctual::Light]> for crate::json::Root {
+    fn as_ref(&self) -> &[crate::json::extensions::scene::khr_lights_punctual::Light] {
         self.extensions
             .as_ref()
             .and_then(|extensions| extensions.khr_lights_punctual.as_ref())
@@ -63,8 +69,8 @@ impl AsRef<[crate::extensions::scene::khr_lights_punctual::Light]> for crate::Ro
     }
 }
 #[cfg(feature = "KHR_lights_punctual")]
-impl AsMut<Vec<crate::extensions::scene::khr_lights_punctual::Light>> for crate::Root {
-    fn as_mut(&mut self) -> &mut Vec<crate::extensions::scene::khr_lights_punctual::Light> {
+impl AsMut<Vec<crate::json::extensions::scene::khr_lights_punctual::Light>> for crate::json::Root {
+    fn as_mut(&mut self) -> &mut Vec<crate::json::extensions::scene::khr_lights_punctual::Light> {
         &mut self
             .extensions
             .get_or_insert_with(Default::default)
@@ -74,18 +80,22 @@ impl AsMut<Vec<crate::extensions::scene::khr_lights_punctual::Light>> for crate:
     }
 }
 
+/// Support for the `KHR_materials_variants` extension.
 #[cfg(feature = "KHR_materials_variants")]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Validate)]
 pub struct KhrMaterialsVariants {
-    pub variants: Vec<crate::extensions::scene::khr_materials_variants::Variant>,
+    #[allow(missing_docs)]
+    pub variants: Vec<crate::json::extensions::scene::khr_materials_variants::Variant>,
 }
 
 #[cfg(feature = "KHR_materials_variants")]
-impl crate::root::Get<crate::extensions::scene::khr_materials_variants::Variant> for crate::Root {
+impl crate::json::root::Get<crate::json::extensions::scene::khr_materials_variants::Variant>
+    for crate::json::Root
+{
     fn get(
         &self,
-        id: crate::Index<crate::extensions::scene::khr_materials_variants::Variant>,
-    ) -> Option<&crate::extensions::scene::khr_materials_variants::Variant> {
+        id: crate::json::Index<crate::json::extensions::scene::khr_materials_variants::Variant>,
+    ) -> Option<&crate::json::extensions::scene::khr_materials_variants::Variant> {
         self.extensions
             .as_ref()?
             .khr_materials_variants
@@ -96,8 +106,10 @@ impl crate::root::Get<crate::extensions::scene::khr_materials_variants::Variant>
 }
 
 #[cfg(feature = "KHR_materials_variants")]
-impl AsRef<[crate::extensions::scene::khr_materials_variants::Variant]> for crate::Root {
-    fn as_ref(&self) -> &[crate::extensions::scene::khr_materials_variants::Variant] {
+impl AsRef<[crate::json::extensions::scene::khr_materials_variants::Variant]>
+    for crate::json::Root
+{
+    fn as_ref(&self) -> &[crate::json::extensions::scene::khr_materials_variants::Variant] {
         self.extensions
             .as_ref()
             .and_then(|extensions| extensions.khr_materials_variants.as_ref())
@@ -106,8 +118,12 @@ impl AsRef<[crate::extensions::scene::khr_materials_variants::Variant]> for crat
     }
 }
 #[cfg(feature = "KHR_materials_variants")]
-impl AsMut<Vec<crate::extensions::scene::khr_materials_variants::Variant>> for crate::Root {
-    fn as_mut(&mut self) -> &mut Vec<crate::extensions::scene::khr_materials_variants::Variant> {
+impl AsMut<Vec<crate::json::extensions::scene::khr_materials_variants::Variant>>
+    for crate::json::Root
+{
+    fn as_mut(
+        &mut self,
+    ) -> &mut Vec<crate::json::extensions::scene::khr_materials_variants::Variant> {
         &mut self
             .extensions
             .get_or_insert_with(Default::default)

@@ -1,5 +1,5 @@
-use crate::validation::{Error, Validate};
-use crate::{extensions, Extras, Path, Root};
+use crate::json::validation::{Error, Validate};
+use crate::json::{extensions, Extras, Path, Root};
 use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 

@@ -1,13 +1,13 @@
-use crate::buffer;
-use crate::extensions;
-use crate::texture;
-use crate::validation;
+use crate::json::buffer;
+use crate::json::extensions;
+use crate::json::texture;
+use crate::json::validation;
 use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 use std::{self, fmt, io, marker};
 
-use crate::path::Path;
-use crate::{
+use crate::json::path::Path;
+use crate::json::{
     Accessor, Animation, Asset, Buffer, Camera, Error, Extras, Image, Material, Mesh, Node, Scene,
     Skin, Texture, Value,
 };
