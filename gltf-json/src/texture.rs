@@ -1,130 +1,79 @@
-use crate::validation::Checked;
+use crate::validation::Validate;
 use crate::{extensions, image, Extras, Index};
 use gltf_derive::Validate;
-use serde::{de, ser};
 use serde_derive::{Deserialize, Serialize};
-use std::fmt;
-
-/// Corresponds to `GL_NEAREST`.
-pub const NEAREST: u32 = 9728;
-
-/// Corresponds to `GL_LINEAR`.
-pub const LINEAR: u32 = 9729;
-
-/// Corresponds to `GL_NEAREST_MIPMAP_NEAREST`.
-pub const NEAREST_MIPMAP_NEAREST: u32 = 9984;
-
-/// Corresponds to `GL_LINEAR_MIPMAP_NEAREST`.
-pub const LINEAR_MIPMAP_NEAREST: u32 = 9985;
-
-/// Corresponds to `GL_NEAREST_MIPMAP_LINEAR`.
-pub const NEAREST_MIPMAP_LINEAR: u32 = 9986;
-
-/// Corresponds to `GL_LINEAR_MIPMAP_LINEAR`.
-pub const LINEAR_MIPMAP_LINEAR: u32 = 9987;
-
-/// Corresponds to `GL_CLAMP_TO_EDGE`.
-pub const CLAMP_TO_EDGE: u32 = 33_071;
-
-/// Corresponds to `GL_MIRRORED_REPEAT`.
-pub const MIRRORED_REPEAT: u32 = 33_648;
-
-/// Corresponds to `GL_REPEAT`.
-pub const REPEAT: u32 = 10_497;
-
-/// All valid magnification filters.
-pub const VALID_MAG_FILTERS: &[u32] = &[NEAREST, LINEAR];
-
-/// All valid minification filters.
-pub const VALID_MIN_FILTERS: &[u32] = &[
-    NEAREST,
-    LINEAR,
-    NEAREST_MIPMAP_NEAREST,
-    LINEAR_MIPMAP_NEAREST,
-    NEAREST_MIPMAP_LINEAR,
-    LINEAR_MIPMAP_LINEAR,
-];
-
-/// All valid wrapping modes.
-pub const VALID_WRAPPING_MODES: &[u32] = &[CLAMP_TO_EDGE, MIRRORED_REPEAT, REPEAT];
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 /// Magnification filter.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
+#[repr(u32)]
 pub enum MagFilter {
     /// Corresponds to `GL_NEAREST`.
-    Nearest = 1,
+    Nearest = 9728,
 
     /// Corresponds to `GL_LINEAR`.
-    Linear,
+    Linear = 9729,
 }
+impl Validate for MagFilter {}
 
 impl MagFilter {
     /// OpenGL enum
-    pub fn as_gl_enum(&self) -> u32 {
-        match *self {
-            MagFilter::Nearest => NEAREST,
-            MagFilter::Linear => LINEAR,
-        }
+    pub fn as_gl_enum(self) -> u32 {
+        self as u32
     }
 }
 
 /// Minification filter.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
+#[repr(u32)]
 pub enum MinFilter {
     /// Corresponds to `GL_NEAREST`.
-    Nearest = 1,
+    Nearest = MagFilter::Nearest as u32,
 
     /// Corresponds to `GL_LINEAR`.
-    Linear,
+    Linear = MagFilter::Linear as u32,
 
     /// Corresponds to `GL_NEAREST_MIPMAP_NEAREST`.
-    NearestMipmapNearest,
+    NearestMipmapNearest = 9984,
 
     /// Corresponds to `GL_LINEAR_MIPMAP_NEAREST`.
-    LinearMipmapNearest,
+    LinearMipmapNearest = 9985,
 
     /// Corresponds to `GL_NEAREST_MIPMAP_LINEAR`.
-    NearestMipmapLinear,
+    NearestMipmapLinear = 9986,
 
     /// Corresponds to `GL_LINEAR_MIPMAP_LINEAR`.
-    LinearMipmapLinear,
+    LinearMipmapLinear = 9987,
 }
+impl Validate for MinFilter {}
 
 impl MinFilter {
     /// Returns the corresponding OpenGL enum value.
-    pub fn as_gl_enum(&self) -> u32 {
-        match *self {
-            MinFilter::Nearest => NEAREST,
-            MinFilter::Linear => LINEAR,
-            MinFilter::NearestMipmapNearest => NEAREST_MIPMAP_NEAREST,
-            MinFilter::LinearMipmapNearest => LINEAR_MIPMAP_NEAREST,
-            MinFilter::NearestMipmapLinear => NEAREST_MIPMAP_LINEAR,
-            MinFilter::LinearMipmapLinear => LINEAR_MIPMAP_LINEAR,
-        }
+    pub fn as_gl_enum(self) -> u32 {
+        self as u32
     }
 }
 
 /// Texture co-ordinate wrapping mode.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize_repr, Eq, PartialEq, Serialize_repr)]
+#[repr(u32)]
 pub enum WrappingMode {
     /// Corresponds to `GL_CLAMP_TO_EDGE`.
-    ClampToEdge = 1,
+    ClampToEdge = 33_071,
 
     /// Corresponds to `GL_MIRRORED_REPEAT`.
-    MirroredRepeat,
+    MirroredRepeat = 33_648,
 
     /// Corresponds to `GL_REPEAT`.
-    Repeat,
+    #[default]
+    Repeat = 10_497,
 }
+impl Validate for WrappingMode {}
 
 impl WrappingMode {
     /// Returns the corresponding OpenGL enum value.
-    pub fn as_gl_enum(&self) -> u32 {
-        match *self {
-            WrappingMode::ClampToEdge => CLAMP_TO_EDGE,
-            WrappingMode::MirroredRepeat => MIRRORED_REPEAT,
-            WrappingMode::Repeat => REPEAT,
-        }
+    pub fn as_gl_enum(self) -> u32 {
+        self as u32
     }
 }
 
@@ -135,12 +84,12 @@ pub struct Sampler {
     /// Magnification filter.
     #[serde(rename = "magFilter")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mag_filter: Option<Checked<MagFilter>>,
+    pub mag_filter: Option<MagFilter>,
 
     /// Minification filter.
     #[serde(rename = "minFilter")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_filter: Option<Checked<MinFilter>>,
+    pub min_filter: Option<MinFilter>,
 
     /// Optional user-defined name for this object.
     #[cfg(feature = "names")]
@@ -149,11 +98,11 @@ pub struct Sampler {
 
     /// `s` wrapping mode.
     #[serde(default, rename = "wrapS")]
-    pub wrap_s: Checked<WrappingMode>,
+    pub wrap_s: WrappingMode,
 
     /// `t` wrapping mode.
     #[serde(default, rename = "wrapT")]
-    pub wrap_t: Checked<WrappingMode>,
+    pub wrap_t: WrappingMode,
 
     /// Extension specific data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -211,132 +160,4 @@ pub struct Info {
     #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Option::is_none"))]
     #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
     pub extras: Extras,
-}
-
-impl<'de> de::Deserialize<'de> for Checked<MagFilter> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<MagFilter>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_MAG_FILTERS)
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::MagFilter::*;
-                use crate::validation::Checked::*;
-                Ok(match value as u32 {
-                    NEAREST => Valid(Nearest),
-                    LINEAR => Valid(Linear),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_u64(Visitor)
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<MinFilter> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<MinFilter>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_MIN_FILTERS)
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::MinFilter::*;
-                use crate::validation::Checked::*;
-                Ok(match value as u32 {
-                    NEAREST => Valid(Nearest),
-                    LINEAR => Valid(Linear),
-                    NEAREST_MIPMAP_NEAREST => Valid(NearestMipmapNearest),
-                    LINEAR_MIPMAP_NEAREST => Valid(LinearMipmapNearest),
-                    NEAREST_MIPMAP_LINEAR => Valid(NearestMipmapLinear),
-                    LINEAR_MIPMAP_LINEAR => Valid(LinearMipmapLinear),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_u64(Visitor)
-    }
-}
-
-impl ser::Serialize for MinFilter {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_u32(self.as_gl_enum())
-    }
-}
-
-impl<'de> de::Deserialize<'de> for Checked<WrappingMode> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        struct Visitor;
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = Checked<WrappingMode>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "any of: {:?}", VALID_WRAPPING_MODES)
-            }
-
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                use self::WrappingMode::*;
-                use crate::validation::Checked::*;
-                Ok(match value as u32 {
-                    CLAMP_TO_EDGE => Valid(ClampToEdge),
-                    MIRRORED_REPEAT => Valid(MirroredRepeat),
-                    REPEAT => Valid(Repeat),
-                    _ => Invalid,
-                })
-            }
-        }
-        deserializer.deserialize_u64(Visitor)
-    }
-}
-
-impl ser::Serialize for MagFilter {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_u32(self.as_gl_enum())
-    }
-}
-
-impl Default for WrappingMode {
-    fn default() -> Self {
-        WrappingMode::Repeat
-    }
-}
-
-impl ser::Serialize for WrappingMode {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_u32(self.as_gl_enum())
-    }
 }

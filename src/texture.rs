@@ -77,12 +77,12 @@ impl<'a> Sampler<'a> {
 
     /// Magnification filter.
     pub fn mag_filter(&self) -> Option<MagFilter> {
-        self.json.mag_filter.map(|filter| filter.unwrap())
+        self.json.mag_filter
     }
 
     /// Minification filter.
     pub fn min_filter(&self) -> Option<MinFilter> {
-        self.json.min_filter.map(|filter| filter.unwrap())
+        self.json.min_filter
     }
 
     /// Optional user-defined name for this object.
@@ -93,12 +93,12 @@ impl<'a> Sampler<'a> {
 
     /// `s` wrapping mode.
     pub fn wrap_s(&self) -> WrappingMode {
-        self.json.wrap_s.unwrap()
+        self.json.wrap_s
     }
 
     /// `t` wrapping mode.
     pub fn wrap_t(&self) -> WrappingMode {
-        self.json.wrap_t.unwrap()
+        self.json.wrap_t
     }
 
     /// Returns extension data unknown to this crate version.
