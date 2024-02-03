@@ -18,6 +18,7 @@ pub enum Projection<'a> {
 #[derive(Clone, Debug)]
 pub struct Camera<'a> {
     /// The parent `Document` struct.
+    #[allow(unused)]
     document: &'a Document,
 
     /// The corresponding JSON index.
@@ -30,10 +31,6 @@ pub struct Camera<'a> {
 ///  Values for an orthographic camera projection.
 #[derive(Clone, Debug)]
 pub struct Orthographic<'a> {
-    /// The parent `Document` struct.
-    #[allow(dead_code)]
-    document: &'a Document,
-
     /// The corresponding JSON struct.
     json: &'a json::camera::Orthographic,
 }
@@ -41,10 +38,6 @@ pub struct Orthographic<'a> {
 /// Values for a perspective camera projection.
 #[derive(Clone, Debug)]
 pub struct Perspective<'a> {
-    /// The parent `Document` struct.
-    #[allow(dead_code)]
-    document: &'a Document,
-
     /// The corresponding JSON struct.
     json: &'a json::camera::Perspective,
 }
@@ -77,14 +70,12 @@ impl<'a> Camera<'a> {
 
     /// Returns the camera's projection.
     pub fn projection(&self) -> Projection {
-        match self.json.type_ {
-            json::camera::Type::Orthographic => {
-                let json = self.json.orthographic.as_ref().unwrap();
-                Projection::Orthographic(Orthographic::new(self.document, json))
+        match self.json.projection {
+            json::camera::Projection::Orthographic { ref orthographic } => {
+                Projection::Orthographic(Orthographic::new(orthographic))
             }
-            json::camera::Type::Perspective => {
-                let json = self.json.perspective.as_ref().unwrap();
-                Projection::Perspective(Perspective::new(self.document, json))
+            json::camera::Projection::Perspective { ref perspective } => {
+                Projection::Perspective(Perspective::new(perspective))
             }
         }
     }
@@ -113,8 +104,8 @@ impl<'a> Camera<'a> {
 
 impl<'a> Orthographic<'a> {
     /// Constructs a `Orthographic` camera projection.
-    pub(crate) fn new(document: &'a Document, json: &'a json::camera::Orthographic) -> Self {
-        Self { document, json }
+    pub(crate) fn new(json: &'a json::camera::Orthographic) -> Self {
+        Self { json }
     }
 
     ///  The horizontal magnification of the view.
@@ -161,8 +152,8 @@ impl<'a> Orthographic<'a> {
 
 impl<'a> Perspective<'a> {
     /// Constructs a `Perspective` camera projection.
-    pub(crate) fn new(document: &'a Document, json: &'a json::camera::Perspective) -> Self {
-        Self { document, json }
+    pub(crate) fn new(json: &'a json::camera::Perspective) -> Self {
+        Self { json }
     }
 
     ///  Aspect ratio of the field of view.

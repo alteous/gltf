@@ -3,43 +3,36 @@ use crate::json::{extensions, Extras, Path, Root};
 use gltf_derive::Validate;
 use serde_derive::{Deserialize, Serialize};
 
-/// Specifies the camera type.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub enum Type {
-    /// A perspective projection.
-    #[serde(rename = "perspective")]
-    Perspective = 1,
-
-    /// An orthographic projection.
-    #[serde(rename = "orthographic")]
-    Orthographic,
+/// Projection matrix parameters.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum Projection {
+    /// Perspective projection.
+    Perspective {
+        /// Perspective projection parameters.
+        perspective: Perspective,
+    },
+    /// Orthographic projection.
+    Orthographic {
+        /// Orthographic projection parameters.
+        orthographic: Orthographic,
+    },
 }
-impl Validate for Type {}
 
-/// A camera's projection.
+/// A viewpoint in the scene.
 ///
 /// A node can reference a camera to apply a transform to place the camera in the
 /// scene.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Validate)]
 pub struct Camera {
     /// Optional user-defined name for this object.
     #[cfg(feature = "names")]
     #[cfg_attr(feature = "names", serde(skip_serializing_if = "Option::is_none"))]
     pub name: Option<String>,
 
-    /// An orthographic camera containing properties to create an orthographic
-    /// projection matrix.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub orthographic: Option<Orthographic>,
-
-    /// A perspective camera containing properties to create a perspective
-    /// projection matrix.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub perspective: Option<Perspective>,
-
-    /// Specifies if the camera uses a perspective or orthographic projection.
-    #[serde(rename = "type")]
-    pub type_: Type,
+    /// Projection matrix parameters.
+    #[serde(flatten)]
+    pub projection: Projection,
 
     /// Extension specific data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -107,24 +100,19 @@ pub struct Perspective {
     pub extras: Extras,
 }
 
-impl Validate for Camera {
+impl Validate for Projection {
     fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
     where
         P: Fn() -> Path,
         R: FnMut(&dyn Fn() -> Path, Error),
     {
-        if self.orthographic.is_none() && self.perspective.is_none() {
-            report(&path, Error::Missing);
+        match self {
+            Self::Perspective { perspective } => {
+                perspective.validate(root, || path().field("perspective"), report);
+            }
+            Self::Orthographic { orthographic } => {
+                orthographic.validate(root, || path().field("orthographic"), report);
+            }
         }
-
-        self.orthographic
-            .validate(root, || path().field("orthographic"), report);
-        self.perspective
-            .validate(root, || path().field("perspective"), report);
-        self.type_.validate(root, || path().field("type"), report);
-        self.extensions
-            .validate(root, || path().field("extensions"), report);
-        self.extras
-            .validate(root, || path().field("extras"), report);
     }
 }
