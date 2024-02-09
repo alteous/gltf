@@ -12,8 +12,9 @@ pub use surface::Surface;
 
 use std::borrow::Cow;
 
+/// Basis spline curve evaluator.
 #[derive(Clone, Debug)]
-pub(crate) struct BSpline<'a, T>
+pub struct BSplineCurve<'a, T>
 where
     T: Clone
         + Copy
@@ -27,12 +28,17 @@ where
         + 'static,
     f64: std::ops::Mul<T, Output = T>,
 {
+    /// Control points.
     pub control_points: Cow<'a, [T]>,
+
+    /// Knot vector padded at each end.
     pub padded_knot_vector: Cow<'a, [f64]>,
+
+    /// Highest degree of the basis splines.
     pub degree: usize,
 }
 
-impl<T> BSpline<'static, T>
+impl<T> BSplineCurve<'static, T>
 where
     T: Clone
         + Copy
@@ -52,7 +58,7 @@ where
     }
 }
 
-impl<'a, T> BSpline<'a, T>
+impl<'a, T> BSplineCurve<'a, T>
 where
     T: Clone
         + Copy
@@ -106,7 +112,7 @@ where
     }
 
     /// Compute a new curve with the given knot.
-    pub fn with_knot(&self, t: f64) -> BSpline<'static, T> {
+    pub fn with_knot(&self, t: f64) -> BSplineCurve<'static, T> {
         let d = self.degree;
         let k = self.knot_span(t);
         let n = self.control_points.len();
@@ -141,7 +147,7 @@ where
         let mut v = self.padded_knot_vector.clone().into_owned();
         v.insert(k + d + 1, t);
 
-        BSpline {
+        BSplineCurve {
             control_points: q.into(),
             padded_knot_vector: v.into(),
             degree: d,
@@ -150,12 +156,12 @@ where
 
     /// Compute this BSpline's derivative.
     #[allow(unused)]
-    pub fn derivative<'b>(&'b self) -> BSpline<'b, T> {
+    pub fn derivative<'b>(&'b self) -> BSplineCurve<'b, T> {
         use approx::ApproxEq;
 
         let d = self.degree;
         if d <= 1 {
-            return BSpline::<'b, T> {
+            return BSplineCurve::<'b, T> {
                 control_points: Vec::new().into(),
                 padded_knot_vector: Vec::new().into(),
                 degree: 0,
@@ -202,7 +208,7 @@ where
         }
         let _ = p.pop();
 
-        BSpline::<'b, T> {
+        BSplineCurve::<'b, T> {
             control_points: Cow::from(p),
             padded_knot_vector: Cow::from(
                 &self.padded_knot_vector[2..(self.padded_knot_vector.len() - 2)],
@@ -223,7 +229,7 @@ where
             let d = self.degree;
             let control_points = self.control_points.clone().into_owned();
             let padded_knot_vector = self.padded_knot_vector.clone().into_owned();
-            let mut copy = BSpline::<'static> {
+            let mut copy = BSplineCurve::<'static> {
                 control_points: control_points.into(),
                 padded_knot_vector: padded_knot_vector.into(),
                 degree: d,
@@ -234,6 +240,114 @@ where
             let k = copy.knot_span(t);
             copy.control_points[k - d]
         }
+    }
+}
+
+/// Basis spline surface evaluator.
+#[derive(Clone, Debug)]
+pub struct BSplineSurface<'a, T>
+where
+    T: Clone
+        + Copy
+        + Default
+        + approx::ApproxEq
+        + std::fmt::Debug
+        + std::ops::Add<T, Output = T>
+        + std::ops::Div<f64, Output = T>
+        + std::ops::Mul<f64, Output = T>
+        + std::ops::Sub<T, Output = T>
+        + 'static,
+    f64: std::ops::Mul<T, Output = T>,
+{
+    /// Control point net.
+    pub control_points: Cow<'a, [T]>,
+
+    /// Control point net dimensions.
+    pub dimensions: [usize; 2],
+
+    /// Knot vectors of the U  and V parameters, padded at each end.
+    pub padded_knot_vectors: [Cow<'a, [f64]>; 2],
+
+    /// Highest degree of the basis splines in the U and V parameters, respectively.
+    pub degree: [usize; 2],
+}
+
+impl<'a, T> BSplineSurface<'a, T>
+where
+    T: Clone
+        + Copy
+        + Default
+        + approx::ApproxEq
+        + std::fmt::Debug
+        + std::ops::Add<T, Output = T>
+        + std::ops::Div<f64, Output = T>
+        + std::ops::Mul<f64, Output = T>
+        + std::ops::Sub<T, Output = T>
+        + 'static,
+    f64: std::ops::Mul<T, Output = T>,
+{
+    fn control_point(&self, [i, j]: [usize; 2]) -> T {
+        let m = self.dimensions[1];
+        self.control_points[m * i + j]
+    }
+
+    /// Compute an isoline curve in the `u` parameter.
+    pub fn uisoline(&self, u: f64) -> BSplineCurve<'static, T> {
+        let [p, q] = self.degree;
+        let [n, m] = self.dimensions;
+
+        let mut vpoints = Vec::with_capacity(m);
+        for j in 0..m {
+            let mut upoints = Vec::with_capacity(n);
+            for i in 0..n {
+                upoints.push(self.control_point([i, j]));
+            }
+
+            let ucurve = BSplineCurve {
+                control_points: (&upoints).into(),
+                padded_knot_vector: self.padded_knot_vectors[0].as_ref().into(),
+                degree: p,
+            };
+            vpoints.push(ucurve.evaluate(u));
+        }
+
+        BSplineCurve {
+            control_points: vpoints.into(),
+            padded_knot_vector: self.padded_knot_vectors[1].to_vec().into(),
+            degree: q,
+        }
+    }
+
+    /// Compute an isoline curve in the `v` parameter.
+    pub fn visoline(&self, v: f64) -> BSplineCurve<'static, T> {
+        let [p, q] = self.degree;
+        let [n, m] = self.dimensions;
+
+        let mut upoints = Vec::with_capacity(n);
+        for i in 0..n {
+            let mut vpoints = Vec::with_capacity(n);
+            for j in 0..m {
+                vpoints.push(self.control_point([i, j]));
+            }
+
+            let vcurve = BSplineCurve {
+                control_points: (&vpoints).into(),
+                padded_knot_vector: self.padded_knot_vectors[1].as_ref().into(),
+                degree: q,
+            };
+            upoints.push(vcurve.evaluate(v));
+        }
+
+        BSplineCurve {
+            control_points: upoints.into(),
+            padded_knot_vector: self.padded_knot_vectors[0].to_vec().into(),
+            degree: p,
+        }
+    }
+
+    /// Evaluate the surface.
+    pub fn evaluate(&self, [u, v]: [f64; 2]) -> T {
+        self.uisoline(u).evaluate(v)
     }
 }
 
@@ -249,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn bspline_knot_insertion() {
+    fn bspline_curve_knot_insertion() {
         let d = 3;
         let u = vec![
             0.0, 0.0, 0.0, //
@@ -257,7 +371,7 @@ mod tests {
             5.0, 5.0, 5.0,
         ];
         let p = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let curve = super::BSpline {
+        let curve = super::BSplineCurve {
             control_points: p.into(),
             padded_knot_vector: u.into(),
             degree: d,
@@ -280,7 +394,7 @@ mod tests {
     }
 
     #[test]
-    fn bspline_naive_de_boor() {
+    fn bspline_curve_naive_de_boor() {
         let d = 3;
         let u = vec![
             0.0, 0.0, 0.0, //
@@ -293,7 +407,7 @@ mod tests {
             dvec2!(2.0, -4.0),
             dvec2!(4.0, 4.0),
         ];
-        let mut curve = super::BSpline::<'static> {
+        let mut curve = super::BSplineCurve::<'static> {
             control_points: p.into(),
             padded_knot_vector: u.into(),
             degree: d,
@@ -307,7 +421,7 @@ mod tests {
         assert_relative_eq!(0.0, curve.control_points[k - d].y);
     }
 
-    fn make_bspline() -> super::BSpline<'static, DVec2> {
+    fn make_bspline_curve() -> super::BSplineCurve<'static, DVec2> {
         let d = 3;
         let u = vec![
             0.0,
@@ -337,7 +451,7 @@ mod tests {
             dvec2!(2.0, 0.0),
             dvec2!(2.0, 1.0),
         ];
-        super::BSpline::<'static, DVec2> {
+        super::BSplineCurve::<'static, DVec2> {
             control_points: p.into(),
             padded_knot_vector: u.into(),
             degree: d,
@@ -345,8 +459,8 @@ mod tests {
     }
 
     #[test]
-    fn bspline_evaluate() {
-        let curve = make_bspline();
+    fn bspline_curve_evaluate() {
+        let curve = make_bspline_curve();
         let points = [
             (0.0, dvec2!(0.0, 0.0)),
             (0.25, dvec2!(0.52734, 0.91406)),
@@ -360,8 +474,8 @@ mod tests {
     }
 
     #[test]
-    fn bspline_derivative() {
-        let curve = make_bspline();
+    fn bspline_curve_derivative() {
+        let curve = make_bspline_curve();
         let derivative = curve.derivative();
 
         let control_points = [
@@ -410,8 +524,8 @@ mod tests {
     }
 
     #[test]
-    fn bspline_offset_domain() {
-        let mut curve = make_bspline();
+    fn bspline_curve_offset_domain() {
+        let mut curve = make_bspline_curve();
         curve.padded_knot_vector = {
             let mut knot_vector = curve.padded_knot_vector.clone().into_owned();
             for u in &mut knot_vector {
@@ -434,10 +548,58 @@ mod tests {
             assert_dvec2_relative_eq(dx, derivative.evaluate(t));
         }
     }
-}
 
-fn slice_truncated<T>(slice: &[T], range: std::ops::Range<usize>) -> &[T] {
-    &slice[range.start.min(slice.len())..range.end.min(slice.len())]
+    fn make_bspline_surface() -> super::BSplineSurface<'static, f64> {
+        super::BSplineSurface {
+            control_points: vec![
+                0.0, 0.1, 0.2, 0.3, //
+                1.0, 1.1, 1.2, 1.3, //
+                2.0, 2.1, 2.2, 2.3, //
+            ]
+            .into(),
+            dimensions: [3, 4],
+            degree: [2, 3],
+            padded_knot_vectors: [
+                vec![
+                    0.0, 0.0, //
+                    0.0, 0.0, 0.0, 1.0, 1.0, 1.0, //
+                    1.0, 1.0, //
+                ]
+                .into(),
+                vec![
+                    2.0, 2.0, 2.0, //
+                    2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, //
+                    3.0, 3.0, 3.0, //
+                ]
+                .into(),
+            ],
+        }
+    }
+
+    #[test]
+    fn bspline_surface_uisoline() {
+        let surface = make_bspline_surface();
+        let isoline = surface.uisoline(0.5);
+        println!("{isoline:#?}");
+        println!("{:?}", isoline.evaluate(2.5));
+    }
+
+    #[test]
+    fn bspline_surface_visoline() {
+        let surface = make_bspline_surface();
+        let isoline = surface.visoline(2.5);
+        println!("{isoline:#?}");
+        println!("{:?}", isoline.evaluate(0.5));
+    }
+
+    #[test]
+    fn bspline_surface_isoline_agreement() {
+        let surface = make_bspline_surface();
+        let [u, v] = [0.5, 2.5];
+        let uisoline = surface.uisoline(u);
+        let visoline = surface.visoline(v);
+        assert_relative_eq!(uisoline.evaluate(v), visoline.evaluate(u));
+    }
 }
 
 /// Iterates over `n` equally spaced steps between the interval endpoints,
@@ -751,7 +913,7 @@ pub mod curve {
     }
 
     impl<'a> Nurbs3d<'a> {
-        fn as_bspline(&self) -> super::BSpline<'static, DVec4> {
+        fn as_bspline(&self) -> super::BSplineCurve<'static, DVec4> {
             // Weighted control points.
             let w = self.weights();
             let pw = self
@@ -761,7 +923,7 @@ pub mod curve {
                 .zip(w.iter().copied().chain(std::iter::repeat(1.0)))
                 .map(|([x, y, z], w)| DVec4::new(x * w, y * w, z * w, w))
                 .collect::<Vec<_>>();
-            super::BSpline::<'static, DVec4> {
+            super::BSplineCurve::<'static, DVec4> {
                 control_points: (pw).into(),
                 padded_knot_vector: self.padded_knot_vector().into(),
                 degree: self.degree() as usize,
@@ -784,7 +946,7 @@ pub mod curve {
                     .iter()
                     .map(|p| DVec3::from(*p))
                     .collect::<Vec<_>>();
-                let bspline = super::BSpline::<DVec3> {
+                let bspline = super::BSplineCurve::<DVec3> {
                     control_points: p.into(),
                     padded_knot_vector: (&u).into(),
                     degree: d,
@@ -803,7 +965,7 @@ pub mod curve {
             let u = self.padded_knot_vector();
             let c = |t| DVec3::from(self.evaluate(t));
 
-            let acurve = super::BSpline::<DVec3> {
+            let acurve = super::BSplineCurve::<DVec3> {
                 control_points: self
                     .control_points()
                     .iter()
@@ -817,7 +979,7 @@ pub mod curve {
             let da_dt_curve = acurve.derivative();
             let da_dt = |t| da_dt_curve.evaluate(t);
 
-            let wcurve = super::BSpline::<f64> {
+            let wcurve = super::BSplineCurve::<f64> {
                 control_points: self.weights().to_vec().into(),
                 padded_knot_vector: u.clone().into(),
                 degree: d,
@@ -890,7 +1052,7 @@ pub mod curve {
             let u = self.padded_knot_vector();
             let c = |t| DVec3::from(self.evaluate(t));
 
-            let acurve = super::BSpline::<DVec3> {
+            let acurve = super::BSplineCurve::<DVec3> {
                 control_points: self
                     .control_points()
                     .iter()
@@ -1001,7 +1163,7 @@ pub mod curve {
             let u = self.padded_knot_vector();
             let c = |t| DVec3::from(self.evaluate(t));
 
-            let acurve = super::BSpline::<DVec3> {
+            let acurve = super::BSplineCurve::<DVec3> {
                 control_points: self
                     .control_points()
                     .iter()
@@ -1017,7 +1179,7 @@ pub mod curve {
             let d2a_dt2_curve = da_dt_curve.derivative();
             let d2a_dt2 = |t| d2a_dt2_curve.evaluate(t);
 
-            let wcurve = super::BSpline::<f64> {
+            let wcurve = super::BSplineCurve::<f64> {
                 control_points: self
                     .weights()
                     .iter()
@@ -1761,6 +1923,30 @@ pub mod surface {
             self.json.num_knots
         }
 
+        fn weighted_control_points(&self) -> Vec<DVec3> {
+            self.control_points()
+                .iter()
+                .copied()
+                .zip(self.weights().iter().copied())
+                .map(|(p, w)| DVec3::from(p) * w)
+                .collect::<Vec<_>>()
+        }
+
+        fn padded_knot_vectors(&self) -> [Vec<f64>; 2] {
+            let pad = |slice: &[f64], n: usize| -> Vec<f64> {
+                let mut padded = slice.to_vec();
+                for _ in 0..n {
+                    padded.insert(0, *padded.first().unwrap());
+                    padded.push(*padded.last().unwrap());
+                }
+                padded
+            };
+
+            let (uk, vk) = self.knot_vectors();
+            let [up, vp] = self.orders().map(|x| x as usize);
+            [pad(uk, up - 1), pad(vk, vp - 1)]
+        }
+
         /// Returns the knot vectors for the U and V curves respectively.
         pub fn knot_vectors(&self) -> (&[f64], &[f64]) {
             self.json
@@ -1773,36 +1959,49 @@ pub mod surface {
             self.json.order
         }
 
+        /// The highest degree of the basis splines for the U and V curves respectively.
+        pub fn degrees(&self) -> [usize; 2] {
+            self.orders().map(|x| x as usize - 1)
+        }
+
         /// Evaluate the surface at parameters `[u, v]`.
         pub fn evaluate(&self, [u, v]: [f64; 2]) -> [f64; 3] {
-            use gltf_json::extensions::kittycad_boundary_representation as kcad_json;
-            let p = self.control_points();
+            let p = self
+                .control_points()
+                .iter()
+                .copied()
+                .map(DVec3::from)
+                .collect::<Vec<_>>();
             let w = self.weights();
-            let [un, _] = self.num_control_points().map(|n| n as usize);
-            let (uk, vk) = self.knot_vectors();
-            let [up, vp] = self.orders().map(|n| n as usize);
-            let mut intermediates = Vec::new();
-            for i in 0..un {
-                let vstart = i * (vk.len() - vp);
-                let vend = (i + 1) * (vk.len() - vp);
-                let vslice = super::slice_truncated(p, vstart..vend);
-                let wslice = super::slice_truncated(w, vstart..vend);
-                let subcurve = kcad_json::curve::Nurbs3d {
-                    control_points: vslice.to_vec(),
-                    order: vp as u32,
-                    knot_vector: vk.to_vec(),
-                    weights: wslice.to_vec(),
+            let [n, m] = self.num_control_points().map(|x| x as usize);
+            let [uk, vk] = self.padded_knot_vectors();
+            let [ud, vd] = self.degrees();
+            if w.is_empty() {
+                let bspline = super::BSplineSurface {
+                    control_points: (&p).into(),
+                    padded_knot_vectors: [(&uk).into(), (&vk).into()],
+                    dimensions: [n, m],
+                    degree: [ud, vd],
                 };
-                let intermediate_point = super::curve::Nurbs3d { json: &subcurve }.evaluate(v);
-                intermediates.push(intermediate_point);
+                bspline.evaluate([u, v]).into()
+            } else {
+                let pw = self.weighted_control_points();
+                let pw_spline = super::BSplineSurface {
+                    control_points: (&pw).into(),
+                    padded_knot_vectors: [(&uk).into(), (&vk).into()],
+                    dimensions: [n, m],
+                    degree: [ud, vd],
+                };
+                let wspline = super::BSplineSurface {
+                    control_points: w.into(),
+                    padded_knot_vectors: [(&uk).into(), (&vk).into()],
+                    dimensions: [n, m],
+                    degree: [ud, vd],
+                };
+                let qw = pw_spline.evaluate([u, v]);
+                let w = wspline.evaluate([u, v]);
+                (qw / w).into()
             }
-            let subcurve = kcad_json::curve::Nurbs3d {
-                control_points: intermediates,
-                order: up as u32,
-                knot_vector: uk.to_vec(),
-                weights: Vec::new(),
-            };
-            super::curve::Nurbs3d { json: &subcurve }.evaluate(u)
         }
     }
 
