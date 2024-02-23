@@ -1932,7 +1932,9 @@ pub mod surface {
                 .collect::<Vec<_>>()
         }
 
-        fn padded_knot_vectors(&self) -> [Vec<f64>; 2] {
+        /// Computes knot vectors padded at each end by the minimum and maximum
+        /// knot values.
+        pub fn padded_knot_vectors(&self) -> [Vec<f64>; 2] {
             let pad = |slice: &[f64], n: usize| -> Vec<f64> {
                 let mut padded = slice.to_vec();
                 for _ in 0..n {
