@@ -889,6 +889,11 @@ pub mod curve {
             &self.json.control_points
         }
 
+        /// Returns the NURBS control point weights.
+        pub fn weights(&self) -> &[f64] {
+            &self.json.weights
+        }
+
         /// Returns the NURBS knot vector.
         pub fn knot_vector(&self) -> &[f64] {
             &self.json.knot_vector
