@@ -12,6 +12,57 @@ pub use surface::Surface;
 
 use std::borrow::Cow;
 
+/// Iterators.
+pub mod iter {
+    use crate::Document;
+    use json::extensions::kittycad_boundary_representation as kcad;
+
+    /// Edge iterator.
+    pub struct Edges<'a>(
+        pub(crate) &'a Document,
+        pub(crate) std::slice::Iter<'a, kcad::IndexWithOrientation<kcad::Edge>>,
+    );
+
+    impl<'a> Iterator for Edges<'a> {
+        type Item = (super::Edge<'a>, super::Orientation);
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.1
+                .next()
+                .map(|kcad::IndexWithOrientation(index, orientation)| {
+                    let edge = self.0.edges().unwrap().nth(index.value()).unwrap();
+                    (edge, *orientation)
+                })
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.1.size_hint()
+        }
+    }
+
+    impl<'a> ExactSizeIterator for Edges<'a> {}
+
+    /// Trace iterator.
+    pub struct Traces<'a>(
+        pub(crate) &'a Document,
+        pub(crate) std::slice::Iter<'a, kcad::Trace>,
+    );
+
+    impl<'a> Iterator for Traces<'a> {
+        type Item = super::Trace<'a>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.1.next().map(|json| super::Trace::new(self.0, json))
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.1.size_hint()
+        }
+    }
+
+    impl<'a> ExactSizeIterator for Traces<'a> {}
+}
+
 /// Basis spline curve evaluator.
 #[derive(Clone, Debug)]
 pub struct BSplineCurve<'a, T>
@@ -2398,22 +2449,13 @@ impl<'a> Loop<'a> {
     }
 
     /// Returns an iterator that visits the 3D edges of the loop.
-    pub fn edges(&self) -> impl ExactSizeIterator<Item = (Edge<'a>, Orientation)> {
-        self.json
-            .edges
-            .iter()
-            .map(|kcad::IndexWithOrientation(index, orientation)| {
-                let edge = self.document.edges().unwrap().nth(index.value()).unwrap();
-                (edge, *orientation)
-            })
+    pub fn edges(&self) -> iter::Edges {
+        iter::Edges(self.document, self.json.edges.iter())
     }
 
     /// Returns an iterator that visits the corresponding 2D traces of the loop.
-    pub fn traces(&self) -> impl ExactSizeIterator<Item = Trace<'a>> {
-        self.json
-            .traces
-            .iter()
-            .map(|json| Trace::new(self.document, json))
+    pub fn traces(&self) -> iter::Traces {
+        iter::Traces(self.document, self.json.traces.iter())
     }
 }
 
