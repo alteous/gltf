@@ -33,7 +33,7 @@ serde_json = { features = ["raw_value"], version = "1.0" }
 default-features = false
 features = ["jpeg", "png"]
 optional = true
-version = "0.24"
+version = "0.25"
 
 [dependencies.uuid]
 features = ["v4"]
@@ -59,7 +59,6 @@ KHR_materials_specular = ["gltf-json/KHR_materials_specular"]
 KHR_materials_emissive_strength = ["gltf-json/KHR_materials_emissive_strength"]
 KITTYCAD_boundary_representation = ["gltf-json/KITTYCAD_boundary_representation"]
 KITTYCAD_uuid = ["gltf-json/KITTYCAD_uuid"]
-image_jpeg_rayon = ["image/jpeg_rayon"]
 guess_mime_type = []
 
 [[example]]
