@@ -51,6 +51,10 @@ pub mod root;
 /// Scene graph structure.
 pub mod scene;
 
+/// JSON schema generation details.
+#[cfg(feature = "schemars")]
+pub(crate) mod schema;
+
 /// Skeletal animations.
 pub mod skin;
 

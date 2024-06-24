@@ -91,6 +91,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Copy, Debug, serde_derive::Deserialize, Eq, PartialEq, serde_derive::Serialize,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.type", rename_all = "camelCase")
+        )]
         #[serde(rename_all = "camelCase")]
         pub enum Type {
             /// Circle curve.
@@ -113,6 +118,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.circle2D", rename_all = "camelCase")
+        )]
         pub struct Circle2d {
             /// Local co-ordinate axes.
             pub axes: Option<Axes2d>,
@@ -124,9 +134,14 @@ pub mod kittycad_boundary_representation {
             pub radius: f64,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -140,6 +155,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.circle3D", rename_all = "camelCase")
+        )]
         pub struct Circle3d {
             /// Local co-ordinate axes.
             pub axes: Option<Axes3d>,
@@ -151,9 +171,14 @@ pub mod kittycad_boundary_representation {
             pub radius: f64,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -164,6 +189,11 @@ pub mod kittycad_boundary_representation {
         /// * x = `self.direction`.
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+        )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.line2D", rename_all = "camelCase")
         )]
         pub struct Line2d {
             /// Origin position.
@@ -173,9 +203,14 @@ pub mod kittycad_boundary_representation {
             pub direction: [f64; 2],
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -187,6 +222,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.line3D", rename_all = "camelCase")
+        )]
         pub struct Line3d {
             /// Origin position.
             pub origin: Option<[f64; 3]>,
@@ -195,15 +235,25 @@ pub mod kittycad_boundary_representation {
             pub direction: [f64; 3],
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
         /// Non-uniform rational basis spline curve definition.
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+        )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.nurbs2D", rename_all = "camelCase")
         )]
         #[gltf(validate = "nurbs2d_validate")]
         pub struct Nurbs2d {
@@ -222,9 +272,14 @@ pub mod kittycad_boundary_representation {
             pub weights: Vec<f64>,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -241,6 +296,11 @@ pub mod kittycad_boundary_representation {
         /// Non-uniform rational basis spline curve definition.
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+        )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.nurbs3D", rename_all = "camelCase")
         )]
         #[gltf(validate = "nurbs3d_validate")]
         pub struct Nurbs3d {
@@ -259,9 +319,14 @@ pub mod kittycad_boundary_representation {
             pub weights: Vec<f64>,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -278,6 +343,11 @@ pub mod kittycad_boundary_representation {
         /// Specific curve data.
         #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
         #[serde(rename_all = "camelCase")]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.geometry2D", rename_all = "camelCase")
+        )]
         pub enum Geometry2d {
             /// Circle curve.
             Circle(Circle2d),
@@ -317,6 +387,11 @@ pub mod kittycad_boundary_representation {
         /// Specific curve data.
         #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
         #[serde(rename_all = "camelCase")]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve.geometry3D", rename_all = "camelCase")
+        )]
         pub enum Geometry3d {
             /// Circle curve.
             Circle(Circle3d),
@@ -357,6 +432,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve3D", rename_all = "camelCase")
+        )]
         pub struct Curve2d {
             /// Discriminant.
             #[serde(rename = "type")]
@@ -370,15 +450,25 @@ pub mod kittycad_boundary_representation {
             pub geometry: Geometry2d,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
         /// Abstract curve data.
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+        )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "curve3D", rename_all = "camelCase")
         )]
         pub struct Curve3d {
             /// Discriminant.
@@ -393,9 +483,14 @@ pub mod kittycad_boundary_representation {
             pub geometry: Geometry3d,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
     }
@@ -411,6 +506,11 @@ pub mod kittycad_boundary_representation {
             Clone, Copy, Debug, serde_derive::Deserialize, Eq, PartialEq, serde_derive::Serialize,
         )]
         #[serde(rename_all = "camelCase")]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface.type", rename_all = "camelCase")
+        )]
         pub enum Type {
             /// Cylindrical surface.
             Cylinder = 1,
@@ -440,6 +540,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface.cylinder", rename_all = "camelCase")
+        )]
         pub struct Cylinder {
             /// Local co-ordinate axes.
             pub axes: Option<Axes3d>,
@@ -451,15 +556,25 @@ pub mod kittycad_boundary_representation {
             pub radius: f64,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
         /// NURBS surface definition.
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+        )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface.nurbs", rename_all = "camelCase")
         )]
         #[gltf(validate = "nurbs_validate")]
         pub struct Nurbs {
@@ -484,9 +599,14 @@ pub mod kittycad_boundary_representation {
             pub order: [u32; 2],
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -519,6 +639,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface.plane", rename_all = "camelCase")
+        )]
         pub struct Plane {
             /// Local co-ordinate axes.
             pub axes: Option<Axes3d>,
@@ -527,9 +652,14 @@ pub mod kittycad_boundary_representation {
             pub origin: Option<[f64; 3]>,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -546,6 +676,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface.sphere", rename_all = "camelCase")
+        )]
         pub struct Sphere {
             /// Local co-ordinate axes.
             pub axes: Option<Axes3d>,
@@ -557,9 +692,14 @@ pub mod kittycad_boundary_representation {
             pub radius: f64,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
@@ -580,6 +720,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface.torus", rename_all = "camelCase")
+        )]
         pub struct Torus {
             /// Local co-ordinate axes.
             pub axes: Option<Axes3d>,
@@ -596,15 +741,25 @@ pub mod kittycad_boundary_representation {
             pub minor_radius: f64,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
 
         /// Specific surface data.
         #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
         #[serde(rename_all = "camelCase")]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface.geometry", rename_all = "camelCase")
+        )]
         pub enum Geometry {
             /// Cylindrical surface.
             Cylinder(Cylinder),
@@ -655,6 +810,11 @@ pub mod kittycad_boundary_representation {
         #[derive(
             Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
         )]
+        #[cfg_attr(
+            feature = "schemars",
+            derive(schemars::JsonSchema),
+            schemars(rename = "surface", rename_all = "camelCase")
+        )]
         pub struct Surface {
             /// Discriminant.
             #[serde(rename = "type")]
@@ -668,9 +828,14 @@ pub mod kittycad_boundary_representation {
             pub geometry: Geometry,
 
             /// Unrecognized extension data.
+            #[cfg_attr(
+                feature = "schemars",
+                schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+            )]
             pub unrecognized_extensions: UnrecognizedExtensions,
 
             /// Optional application specific data.
+            #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
             pub extras: Option<Extras>,
         }
     }
@@ -680,6 +845,11 @@ pub mod kittycad_boundary_representation {
     /// In 3D systems, the 'z' axis is inferred from the cross product of the 'x' and 'y' axes.
     #[derive(
         Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize, gltf_derive::Validate,
+    )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "axes2D", rename_all = "camelCase")
     )]
     pub struct Axes2d {
         /// The 'x' co-ordinate axis.
@@ -706,6 +876,11 @@ pub mod kittycad_boundary_representation {
     #[derive(
         Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize, gltf_derive::Validate,
     )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "axes3D", rename_all = "camelCase")
+    )]
     pub struct Axes3d {
         /// The 'x' co-ordinate axis.
         #[serde(rename = "xAxis")]
@@ -728,6 +903,11 @@ pub mod kittycad_boundary_representation {
     /// Junctions of edges in 3D space.
     #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
     #[serde(rename_all = "camelCase")]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "vertex", rename_all = "camelCase")
+    )]
     pub struct Vertex(
         /// `[x, y, z]` co-ordinate.
         pub [f64; 3],
@@ -747,6 +927,11 @@ pub mod kittycad_boundary_representation {
         serde_repr::Serialize_repr,
     )]
     #[repr(i8)]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "orientation", rename_all = "camelCase")
+    )]
     pub enum Orientation {
         /// Same-sense orientation.
         #[default]
@@ -841,6 +1026,19 @@ pub mod kittycad_boundary_representation {
         }
     }
 
+    #[cfg(feature = "schemars")]
+    impl<T: Validate> schemars::JsonSchema for IndexWithOrientation<T> {
+        fn schema_name() -> String {
+            "indexWithOrientation".to_owned()
+        }
+
+        fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+            #[derive(serde_derive::Deserialize, schemars::JsonSchema, serde_derive::Serialize)]
+            struct NonGenericIndexWithOrientation(pub u32, #[serde(default)] pub Orientation);
+            NonGenericIndexWithOrientation::json_schema(generator)
+        }
+    }
+
     impl<T: Validate> Validate for IndexWithOrientation<T>
     where
         crate::Root: AsRef<[T]>,
@@ -859,6 +1057,11 @@ pub mod kittycad_boundary_representation {
     /// The interval is closed at both ends.
     #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
     #[serde(rename_all = "camelCase")]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "interval", rename_all = "camelCase")
+    )]
     pub struct Interval(
         /// Minimum value.
         pub f64,
@@ -894,6 +1097,11 @@ pub mod kittycad_boundary_representation {
     #[derive(
         Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
     )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "trace", rename_all = "camelCase")
+    )]
     pub struct Trace {
         /// The trace curve geometry in 2D (or homogeneous 3D) space.
         pub curve: IndexWithOrientation<Curve2d>,
@@ -905,15 +1113,25 @@ pub mod kittycad_boundary_representation {
         pub t: Interval,
 
         /// Unrecognized extension data.
+        #[cfg_attr(
+            feature = "schemars",
+            schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+        )]
         pub unrecognized_extensions: UnrecognizedExtensions,
 
         /// Optional application specific data.
+        #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
         pub extras: Option<Extras>,
     }
 
     /// Pair of vertices on a face with an accompanying 3D curve.
     #[derive(
         Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+    )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "edge", rename_all = "camelCase")
     )]
     pub struct Edge {
         /// The edge curve geometry in 3D (or homogeneous 4D) space.
@@ -932,15 +1150,25 @@ pub mod kittycad_boundary_representation {
         pub t: Interval,
 
         /// Unrecognized extension data.
+        #[cfg_attr(
+            feature = "schemars",
+            schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+        )]
         pub unrecognized_extensions: UnrecognizedExtensions,
 
         /// Optional application specific data.
+        #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
         pub extras: Option<Extras>,
     }
 
     /// Edge loop.
     #[derive(
         Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+    )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "loop", rename_all = "camelCase")
     )]
     pub struct Loop {
         /// Oriented edges forming the loop.
@@ -950,15 +1178,25 @@ pub mod kittycad_boundary_representation {
         pub traces: Vec<Trace>,
 
         /// Unrecognized extension data.
+        #[cfg_attr(
+            feature = "schemars",
+            schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+        )]
         pub unrecognized_extensions: UnrecognizedExtensions,
 
         /// Optional application specific data.
+        #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
         pub extras: Option<Extras>,
     }
 
     /// Set of loops defined on an abstract surface.
     #[derive(
         Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+    )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "face", rename_all = "camelCase")
     )]
     pub struct Face {
         /// Surface the face edges and vertices reside on.
@@ -968,15 +1206,25 @@ pub mod kittycad_boundary_representation {
         pub loops: Vec<IndexWithOrientation<Loop>>,
 
         /// Unrecognized extension data.
+        #[cfg_attr(
+            feature = "schemars",
+            schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+        )]
         pub unrecognized_extensions: UnrecognizedExtensions,
 
         /// Optional application specific data.
+        #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
         pub extras: Option<Extras>,
     }
 
     /// Boundary representation volume.
     #[derive(
         Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+    )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "shell", rename_all = "camelCase")
     )]
     pub struct Shell {
         /// Set of connected faces forming a closed 'watertight' volume.
@@ -986,15 +1234,25 @@ pub mod kittycad_boundary_representation {
         pub name: Option<String>,
 
         /// Unrecognized extension data.
+        #[cfg_attr(
+            feature = "schemars",
+            schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+        )]
         pub unrecognized_extensions: UnrecognizedExtensions,
 
         /// Optional application specific data.
+        #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
         pub extras: Option<Extras>,
     }
 
     /// Solid boundary representation structure.
     #[derive(
         Clone, Debug, gltf_derive::Deserialize, gltf_derive::Serialize, gltf_derive::Validate,
+    )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "solid", rename_all = "camelCase")
     )]
     pub struct Solid {
         /// The boundaries of the solid volume.
@@ -1007,9 +1265,14 @@ pub mod kittycad_boundary_representation {
         pub mesh: Option<Index<crate::Mesh>>,
 
         /// Unrecognized extension data.
+        #[cfg_attr(
+            feature = "schemars",
+            schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+        )]
         pub unrecognized_extensions: UnrecognizedExtensions,
 
         /// Optional application specific data.
+        #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
         pub extras: Option<Extras>,
     }
 
@@ -1021,6 +1284,11 @@ pub mod kittycad_boundary_representation {
         gltf_derive::Deserialize,
         gltf_derive::Serialize,
         gltf_derive::Validate,
+    )]
+    #[cfg_attr(
+        feature = "schemars",
+        derive(schemars::JsonSchema),
+        schemars(rename = "KITTYCAD_boundary_representation", rename_all = "camelCase")
     )]
     pub struct BRep {
         /// Solid boundary representation instances.
@@ -1051,9 +1319,14 @@ pub mod kittycad_boundary_representation {
         pub curves_3d: Vec<Curve3d>,
 
         /// Unrecognized extension data.
+        #[cfg_attr(
+            feature = "schemars",
+            schemars(rename = "extensions", schema_with = "crate::schema::extensions")
+        )]
         pub unrecognized_extensions: UnrecognizedExtensions,
 
         /// Optional application specific data.
+        #[cfg_attr(feature = "schemars", schemars(schema_with = "crate::schema::extras"))]
         pub extras: Option<Extras>,
     }
 }
@@ -1341,6 +1614,17 @@ where
     }
 }
 
+#[cfg(feature = "schemars")]
+impl<T> schemars::JsonSchema for Index<T> {
+    fn schema_name() -> String {
+        "index".to_owned()
+    }
+
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        u32::json_schema(generator)
+    }
+}
+
 impl<'a, T> Wrap<'a> for Index<T>
 where
     T: 'a + Wrap<'a>,
@@ -1522,5 +1806,13 @@ mod tests {
             "extensionsRequired[0] = \"KHR_mesh_quantization\""
         );
         assert_eq!(*error, Error::Unsupported);
+    }
+
+    #[cfg(feature = "schemars")]
+    #[test]
+    fn test_generate_schema() {
+        let schema = schemars::schema_for!(super::kittycad_boundary_representation::BRep);
+        let json = serde_json::to_string_pretty(&schema).unwrap();
+        println!("{json}");
     }
 }
