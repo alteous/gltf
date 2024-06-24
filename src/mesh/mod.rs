@@ -8,6 +8,7 @@ use crate::{accessor, material, Extras, Index, Root, UnrecognizedExtensions};
 use serde::ser;
 use serde_json::from_value;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 
 /// Support for the `KHR_materials_variants` extension.
 pub mod khr_materials_variants {
@@ -479,9 +480,9 @@ impl ser::Serialize for Semantic {
     }
 }
 
-impl ToString for Semantic {
-    fn to_string(&self) -> String {
-        match *self {
+impl Display for Semantic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match *self {
             Self::Positions => "POSITION".into(),
             Self::Normals => "NORMAL".into(),
             Self::Tangents => "TANGENT".into(),
@@ -491,7 +492,8 @@ impl ToString for Semantic {
             Self::Weights(set) => format!("WEIGHTS_{}", set),
             Self::Extras(ref name) => format!("_{name}"),
             Self::Extensions(ref name) => name.clone(),
-        }
+        };
+        f.write_str(&string)
     }
 }
 
