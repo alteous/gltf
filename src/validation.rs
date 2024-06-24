@@ -148,6 +148,7 @@ impl std::fmt::Display for Error {
 // These types are assumed to be always valid.
 impl Validate for bool {}
 impl Validate for u32 {}
+impl Validate for [u32; 2] {}
 impl Validate for usize {}
 impl Validate for i32 {}
 impl Validate for f32 {}
@@ -155,6 +156,11 @@ impl Validate for [f32; 2] {}
 impl Validate for [f32; 3] {}
 impl Validate for [f32; 4] {}
 impl Validate for [f32; 16] {}
+impl Validate for f64 {}
+impl Validate for [f64; 2] {}
+impl Validate for [f64; 3] {}
+impl Validate for [f64; 4] {}
+impl Validate for [f64; 16] {}
 impl Validate for () {}
 impl Validate for String {}
 impl Validate for serde_json::Map<String, serde_json::Value> {}
