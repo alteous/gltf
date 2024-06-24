@@ -130,6 +130,29 @@ pub mod khr_lights_punctual {
     }
 }
 
+/// Support for the `KITTYCAD_boundary_representation` extension.
+pub mod kittycad_boundary_representation {
+    /// Instantiation of a solid in a scene node.
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        gltf_derive::Deserialize,
+        gltf_derive::Serialize,
+        gltf_derive::Validate,
+    )]
+    pub struct SolidInstance {
+        /// Solid boundary representation instance.
+        pub solid: Vec<crate::Index<crate::root::kittycad_boundary_representation::Solid>>,
+
+        /// Unrecognized extension data.
+        pub unrecognized_extensions: crate::UnrecognizedExtensions,
+
+        /// Optional application specific data.
+        pub extras: Option<crate::Extras>,
+    }
+}
+
 /// A node in the node hierarchy.
 ///
 /// When the node contains `skin`, all
@@ -181,6 +204,10 @@ pub struct Node {
     /// Support for the `KHR_lights_punctual` extension.
     #[gltf(extension = "KHR_lights_punctual")]
     pub light: Option<khr_lights_punctual::LightInstance>,
+
+    /// Support for the `KITTYCAD_boundary_representation` extension.
+    #[gltf(extension = "KITTYCAD_boundary_representation")]
+    pub solid: Option<kittycad_boundary_representation::SolidInstance>,
 
     /// Unrecognized extension data.
     pub unrecognized_extensions: UnrecognizedExtensions,
