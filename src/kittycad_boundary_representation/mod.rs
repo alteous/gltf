@@ -2449,8 +2449,14 @@ impl<'a> Loop<'a> {
     }
 
     /// Returns an iterator that visits the 3D edges of the loop.
-    pub fn edges(&self) -> iter::Edges {
-        iter::Edges(self.document, self.json.edges.iter())
+    pub fn edges(&self) -> impl Iterator<Item = Option<(Edge, Orientation)>> {
+        self.json.edges.iter().map(|opt| {
+            opt.clone()
+                .map(|kcad::IndexWithOrientation(index, orientation)| {
+                    let edge = self.document.edges().unwrap().nth(index.value()).unwrap();
+                    (edge, orientation)
+                })
+        })
     }
 
     /// Returns an iterator that visits the corresponding 2D traces of the loop.
