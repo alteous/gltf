@@ -775,6 +775,23 @@ impl Interval {
     }
 }
 
+/// Describes the relationship of a trace to its associated edge.
+#[derive(Clone, Copy, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[schemars(rename = "curve.type")]
+#[serde(rename_all = "camelCase")]
+pub enum Relation {
+    /// The edge is associated with the trace solely.
+    Boundary,
+    /// The edge is associated with at least one other trace.
+    Mate,
+    /// The edge marks the domain boundary of a closed surface.
+    Seam,
+    /// No edge is associated with this trace. The singularity occurs at the given point in 3D.
+    Singularity([f64; 3]),
+}
+
+crate::impl_validate_nop!(Relation);
+
 /// Curve tracing the path of an edge in 2D surface space.
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
 pub struct Trace {
@@ -787,6 +804,18 @@ pub struct Trace {
 
     /// Interval for the curve 't' parameter.
     pub t: Interval,
+
+    /// Description of the relationship between trace and edge.
+    #[serde(default = "trace_relation_default", skip_serializing_if = "trace_relation_is_default")]
+    pub relation: Relation,
+}
+
+fn trace_relation_default() -> Relation {
+    Relation::Mate
+}
+
+fn trace_relation_is_default(relation: &Relation) -> bool {
+    *relation == trace_relation_default()
 }
 
 /// Pair of vertices on a face with an accompanying 3D curve..
@@ -812,16 +841,44 @@ pub struct Edge {
 }
 
 /// Edge loop.
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(rename = "loop")]
 pub struct Loop {
     /// Oriented edges forming the loop.
-    pub edges: Vec<IndexWithOrientation<Edge>>,
+    pub edges: Vec<Option<IndexWithOrientation<Edge>>>,
 
     /// Optional 1:1 pairing of traces to edges.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub traces: Vec<Trace>,
+}
+
+impl Validate for Loop {
+    fn validate<P, R>(&self, root: &Root, path: P, report: &mut R)
+    where
+        P: Fn() -> crate::Path,
+        R: FnMut(&dyn Fn() -> crate::Path, Error),
+    {
+        if self.traces.is_empty() {
+            for (index, edge) in self.edges.iter().enumerate() {
+                if edge.is_none() {
+                    report(&|| path().field("edges").index(index), Error::Invalid);
+                }
+            }
+        } else if self.traces.len() == self.edges.len() {
+            for (index, (edge, trace)) in self.edges.iter().zip(self.traces.iter()).enumerate() {
+                if matches!(trace.relation, Relation::Singularity(_)) ^ edge.is_none() {
+                    report(&|| path().field("traces").index(index), Error::Invalid);
+                }
+            }
+        } else {
+            report(&|| path().field("traces"), Error::Invalid);
+        }
+
+        self.edges.validate(root, || path().field("edges"), report);
+        self.traces
+            .validate(root, || path().field("traces"), report);
+    }
 }
 
 /// Set of loops defined on an abstract surface.

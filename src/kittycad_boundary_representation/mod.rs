@@ -2,7 +2,7 @@ use crate::{Document, Mesh};
 use json::extensions::kittycad_boundary_representation as kcad;
 
 #[doc(inline)]
-pub use kcad::{Axes2d, Axes3d, Interval, Orientation};
+pub use kcad::{Axes2d, Axes3d, Interval, Orientation, Relation};
 
 #[doc(inline)]
 pub use curve::{Curve2d, Curve3d};
@@ -2449,8 +2449,14 @@ impl<'a> Loop<'a> {
     }
 
     /// Returns an iterator that visits the 3D edges of the loop.
-    pub fn edges(&self) -> iter::Edges {
-        iter::Edges(self.document, self.json.edges.iter())
+    pub fn edges(&self) -> impl ExactSizeIterator<Item = Option<(Edge, Orientation)>> {
+        self.json.edges.iter().map(|opt| {
+            opt.clone()
+                .map(|kcad::IndexWithOrientation(index, orientation)| {
+                    let edge = self.document.edges().unwrap().nth(index.value()).unwrap();
+                    (edge, orientation)
+                })
+        })
     }
 
     /// Returns an iterator that visits the corresponding 2D traces of the loop.
@@ -2654,5 +2660,10 @@ impl<'a> Trace<'a> {
     /// Returns the interval for the trace curve parameter 't'.
     pub fn t(&self) -> Interval {
         self.json.t.clone()
+    }
+
+    /// Returns the relationship of the associated edge.
+    pub fn relation(&self) -> kcad::Relation {
+        self.json.relation
     }
 }
