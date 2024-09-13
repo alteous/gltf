@@ -2,7 +2,7 @@ use crate::{Document, Mesh};
 use json::extensions::kittycad_boundary_representation as kcad;
 
 #[doc(inline)]
-pub use kcad::{Axes2d, Axes3d, Interval, Orientation};
+pub use kcad::{Axes2d, Axes3d, Interval, Orientation, Relation};
 
 #[doc(inline)]
 pub use curve::{Curve2d, Curve3d};
@@ -2660,5 +2660,10 @@ impl<'a> Trace<'a> {
     /// Returns the interval for the trace curve parameter 't'.
     pub fn t(&self) -> Interval {
         self.json.t.clone()
+    }
+
+    /// Returns the relationship of the associated edge.
+    pub fn relation(&self) -> kcad::Relation {
+        self.json.relation
     }
 }
