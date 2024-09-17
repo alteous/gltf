@@ -2449,7 +2449,7 @@ impl<'a> Loop<'a> {
     }
 
     /// Returns an iterator that visits the 3D edges of the loop.
-    pub fn edges(&self) -> impl Iterator<Item = Option<(Edge, Orientation)>> {
+    pub fn edges(&self) -> impl ExactSizeIterator<Item = Option<(Edge, Orientation)>> {
         self.json.edges.iter().map(|opt| {
             opt.clone()
                 .map(|kcad::IndexWithOrientation(index, orientation)| {

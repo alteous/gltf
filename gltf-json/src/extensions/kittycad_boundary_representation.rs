@@ -776,7 +776,7 @@ impl Interval {
 }
 
 /// Describes the relationship of a trace to its associated edge.
-#[derive(Clone, Copy, Debug, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[schemars(rename = "curve.type")]
 #[serde(rename_all = "camelCase")]
 pub enum Relation {
@@ -786,8 +786,8 @@ pub enum Relation {
     Mate,
     /// The edge marks the domain boundary of a closed surface.
     Seam,
-    /// No edge is associated with this trace.
-    Singularity,
+    /// No edge is associated with this trace. The singularity occurs at the given point in 3D.
+    Singularity([f64; 3]),
 }
 
 crate::impl_validate_nop!(Relation);
@@ -806,7 +806,16 @@ pub struct Trace {
     pub t: Interval,
 
     /// Description of the relationship between trace and edge.
+    #[serde(default = "trace_relation_default", skip_serializing_if = "trace_relation_is_default")]
     pub relation: Relation,
+}
+
+fn trace_relation_default() -> Relation {
+    Relation::Mate
+}
+
+fn trace_relation_is_default(relation: &Relation) -> bool {
+    *relation == trace_relation_default()
 }
 
 /// Pair of vertices on a face with an accompanying 3D curve..
@@ -858,7 +867,7 @@ impl Validate for Loop {
             }
         } else if self.traces.len() == self.edges.len() {
             for (index, (edge, trace)) in self.edges.iter().zip(self.traces.iter()).enumerate() {
-                if (trace.relation == Relation::Singularity) ^ edge.is_none() {
+                if matches!(trace.relation, Relation::Singularity(_)) ^ edge.is_none() {
                     report(&|| path().field("traces").index(index), Error::Invalid);
                 }
             }
