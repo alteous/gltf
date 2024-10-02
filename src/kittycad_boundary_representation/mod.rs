@@ -1934,6 +1934,42 @@ pub mod surface {
         pub fn minor_radius(&self) -> f64 {
             self.json.minor_radius
         }
+
+        /// Evaluate the surface at parameters `[u, v]`.
+        pub fn evaluate(&self, [u, v]: [f64; 2]) -> [f64; 3] {
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            let zaxis = DVec3::from(self.zaxis());
+            let major_radius = self.major_radius();
+            let minor_radius = self.minor_radius();
+            let (sin_u, cos_u) = u.sin_cos();
+            let raxis = cos_u * xaxis + sin_u * yaxis;
+            let (sin_v, cos_v) = v.sin_cos();
+            let point = origin
+                + (major_radius + minor_radius * cos_v) * raxis
+                + minor_radius * sin_v * zaxis;
+            point.into()
+        }
+
+        /// Find (u, v) for a point (x, y, z) on the torus.
+        ///
+        /// The result is unspecified if (x, y, z) does not lie on the torus
+        /// within a reasonable tolerance.
+        pub fn evaluate_inverse(&self, point: [f64; 3]) -> [f64; 2] {
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            let zaxis = DVec3::from(self.zaxis());
+            let minor_radius = self.minor_radius();
+            let displacement = DVec3::from(point) - origin;
+            let dx = displacement.dot(xaxis);
+            let dy = displacement.dot(yaxis);
+            let dz = displacement.dot(zaxis);
+            let u = dy.atan2(dx);
+            let v = (dz / minor_radius).asin();
+            [u, v]
+        }
     }
 
     /// Defines a non-uniform rational B-spline (NURBS) surface.
@@ -2086,7 +2122,7 @@ pub mod surface {
                 Geometry::Nurbs(nurbs) => nurbs.evaluate(uv),
                 Geometry::Plane(plane) => plane.evaluate(uv),
                 Geometry::Sphere(sphere) => sphere.evaluate(uv),
-                Geometry::Torus(_torus) => unimplemented!(),
+                Geometry::Torus(torus) => torus.evaluate(uv),
             }
         }
     }
@@ -2314,6 +2350,43 @@ pub mod surface {
                     panic!(
                         "test_points[{i}]: sphere.evaluate_inverse({b:?}) = {:?} != {a:?}",
                         sphere.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_torus_basic() {
+            let torus = super::Torus {
+                json: &kcad_json::surface::Torus {
+                    axes: None,
+                    origin: None,
+                    major_radius: 2.0,
+                    minor_radius: 1.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [3.0, 0.0, 0.0]),
+                ([0.5 * PI, 0.0], [0.0, 3.0, 0.0]),
+                ([PI, 0.0], [-3.0, 0.0, 0.0]),
+                ([-0.5 * PI, 0.0], [0.0, -3.0, 0.0]),
+                ([0.0, 0.5 * PI], [2.0, 0.0, 1.0]),
+                ([0.0, -0.5 * PI], [2.0, 0.0, -1.0]),
+                ([0.5 * PI, 0.5 * PI], [0.0, 2.0, 1.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(torus.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate({a:?}) = {:?} != {b:?}",
+                        torus.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(torus.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        torus.evaluate_inverse(b)
                     );
                 }
             }
