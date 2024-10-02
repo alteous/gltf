@@ -1777,6 +1777,36 @@ pub mod surface {
         pub fn radius(&self) -> f64 {
             self.json.radius
         }
+
+        /// Evaluate the surface at parameters `[u, v]`.
+        pub fn evaluate(&self, [u, v]: [f64; 2]) -> [f64; 3] {
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            let zaxis = DVec3::from(self.zaxis());
+            let radius = self.radius();
+            let (sin, cos) = u.sin_cos();
+            let point = origin + radius * (cos * xaxis + sin * yaxis) + v * zaxis;
+            point.into()
+        }
+
+        /// Find (u, v) for a point (x, y, z) on the cylinder.
+        ///
+        /// The result is unspecified if (x, y, z) does not lie on the cylinder
+        /// within a reasonable tolerance.
+        pub fn evaluate_inverse(&self, point: [f64; 3]) -> [f64; 2] {
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            let zaxis = DVec3::from(self.zaxis());
+            let displacement = DVec3::from(point) - origin;
+            let dx = displacement.dot(xaxis);
+            let dy = displacement.dot(yaxis);
+            let dz = displacement.dot(zaxis);
+            let u = dy.atan2(dx);
+            let v = dz;
+            [u, v]
+        }
     }
 
     /// Defines a planar surface.
@@ -2118,7 +2148,7 @@ pub mod surface {
         /// Evaluate the surface at parameters `[u, v]`.
         pub fn evaluate(&self, uv: [f64; 2]) -> [f64; 3] {
             match self {
-                Geometry::Cylinder(_cylinder) => unimplemented!(),
+                Geometry::Cylinder(cylinder) => cylinder.evaluate(uv),
                 Geometry::Nurbs(nurbs) => nurbs.evaluate(uv),
                 Geometry::Plane(plane) => plane.evaluate(uv),
                 Geometry::Sphere(sphere) => sphere.evaluate(uv),
@@ -2387,6 +2417,41 @@ pub mod surface {
                     panic!(
                         "test_points[{i}]: torus.evaluate_inverse({b:?}) = {:?} != {a:?}",
                         torus.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_cylinder_basic() {
+            let cylinder = super::Cylinder {
+                json: &kcad_json::surface::Cylinder {
+                    axes: None,
+                    origin: None,
+                    radius: 2.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [2.0, 0.0, 0.0]),
+                ([0.5 * PI, 0.0], [0.0, 2.0, 0.0]),
+                ([PI, 12.0], [-2.0, 0.0, 12.0]),
+                ([-0.5 * PI, 0.0], [0.0, -2.0, 0.0]),
+                ([0.0, 12.0], [2.0, 0.0, 12.0]),
+                ([0.0, -12.0], [2.0, 0.0, -12.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(cylinder.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate({a:?}) = {:?} != {b:?}",
+                        cylinder.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(cylinder.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        cylinder.evaluate_inverse(b)
                     );
                 }
             }
