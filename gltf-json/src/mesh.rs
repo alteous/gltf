@@ -6,6 +6,7 @@ use serde_derive::{Deserialize, Serialize};
 use serde_json::from_value;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::fmt::Display;
 
 /// Corresponds to `GL_POINTS`.
 pub const POINTS: u32 = 0;
@@ -341,28 +342,27 @@ impl ser::Serialize for Semantic {
     }
 }
 
-impl ToString for Semantic {
-    fn to_string(&self) -> String {
-        use self::Semantic::*;
+impl Display for Semantic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Positions => "POSITION".into(),
-            Normals => "NORMAL".into(),
-            Tangents => "TANGENT".into(),
-            Colors(set) => format!("COLOR_{}", set),
-            TexCoords(set) => format!("TEXCOORD_{}", set),
-            Joints(set) => format!("JOINTS_{}", set),
-            Weights(set) => format!("WEIGHTS_{}", set),
+            Semantic::Positions => write!(f, "POSITION"),
+            Semantic::Normals => write!(f, "NORMAL"),
+            Semantic::Tangents => write!(f, "TANGENT"),
+            Semantic::Colors(set) => write!(f, "COLOR_{}", set),
+            Semantic::TexCoords(set) => write!(f, "TEXCOORD_{}", set),
+            Semantic::Joints(set) => write!(f, "JOINTS_{}", set),
+            Semantic::Weights(set) => write!(f, "WEIGHTS_{}", set),
             #[cfg(feature = "extras")]
-            Extras(ref name) => format!("_{}", name),
+            Semantic::Extras(ref name) => write!(f, "_{}", name),
         }
     }
 }
 
-impl ToString for Checked<Semantic> {
-    fn to_string(&self) -> String {
+impl Display for Checked<Semantic> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Checked::Valid(ref semantic) => semantic.to_string(),
-            Checked::Invalid => "<invalid semantic name>".into(),
+            Checked::Valid(ref semantic) => write!(f, "{semantic}"),
+            Checked::Invalid => write!(f, "<invalid semantic name>"),
         }
     }
 }
