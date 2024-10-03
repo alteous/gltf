@@ -613,6 +613,18 @@ pub struct Vertex(
 crate::impl_validate_nop!(Vertex);
 
 /// Selected orientation of an orientable item.
+///
+/// # Examples
+///
+/// ```rust
+/// # use gltf_json::extensions::kittycad_boundary_representation::Orientation;
+/// assert_eq!(Orientation::Reverse, !Orientation::Same);
+/// assert_eq!(Orientation::Same, Orientation::reverse_if(3 < 2));
+/// assert_eq!(Orientation::Same, Orientation::same_if(2 < 3));
+/// assert_eq!(Orientation::Reverse, Orientation::Same * Orientation::Reverse);
+/// assert_eq!(Orientation::Same, Orientation::Reverse * Orientation::Reverse);
+/// assert_eq!(Orientation::Same, Orientation::Same * Orientation::Same);
+/// ```
 #[derive(
     Clone, Copy, Debug, Default, Deserialize_repr, Eq, JsonSchema, PartialEq, Serialize_repr,
 )]
@@ -628,6 +640,20 @@ pub enum Orientation {
 }
 
 impl Orientation {
+    /// Returns `Orientation::Same` when the condition is met.
+    pub fn same_if(condition: bool) -> Self {
+        if condition {
+            Self::Same
+        } else {
+            Self::Reverse
+        }
+    }
+
+    /// Returns `Orientation::Reverse` when the condition is met.
+    pub fn reverse_if(condition: bool) -> Self {
+        Self::same_if(!condition)
+    }
+
     /// Query whether the orientation is in the same-sense state.
     pub fn is_same(self) -> bool {
         matches!(self, Orientation::Same)
@@ -635,7 +661,7 @@ impl Orientation {
 
     /// Query whether the orientation is in the reverse-sense state.
     pub fn is_reverse(self) -> bool {
-        matches!(self, Orientation::Reverse)
+        !self.is_same()
     }
 }
 
@@ -647,6 +673,17 @@ impl std::ops::Mul for Orientation {
             1 => Self::Same,
             -1 => Self::Reverse,
             _ => unreachable!(),
+        }
+    }
+}
+
+impl std::ops::Not for Orientation {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Self::Same => Self::Reverse,
+            Self::Reverse => Self::Same,
         }
     }
 }
