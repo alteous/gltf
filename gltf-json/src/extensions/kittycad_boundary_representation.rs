@@ -806,7 +806,10 @@ pub struct Trace {
     pub t: Interval,
 
     /// Description of the relationship between trace and edge.
-    #[serde(default = "trace_relation_default", skip_serializing_if = "trace_relation_is_default")]
+    #[serde(
+        default = "trace_relation_default",
+        skip_serializing_if = "trace_relation_is_default"
+    )]
     pub relation: Relation,
 }
 
