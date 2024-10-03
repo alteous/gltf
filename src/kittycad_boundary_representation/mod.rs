@@ -2206,6 +2206,7 @@ pub mod surface {
     #[cfg(test)]
     mod tests {
         use gltf_json::extensions::kittycad_boundary_representation as kcad_json;
+        use json::extensions::kittycad_boundary_representation::Axes3d;
         use std::f64::consts::PI;
 
         macro_rules! all_relative_eq {
@@ -2423,6 +2424,123 @@ pub mod surface {
         }
 
         #[test]
+        fn evaluate_torus_offset() {
+            let torus = super::Torus {
+                json: &kcad_json::surface::Torus {
+                    axes: None,
+                    origin: Some([1.0, 2.0, 3.0]),
+                    major_radius: 2.0,
+                    minor_radius: 1.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [4.0, 2.0, 3.0]),
+                ([0.5 * PI, 0.0], [1.0, 5.0, 3.0]),
+                ([PI, 0.0], [-2.0, 2.0, 3.0]),
+                ([-0.5 * PI, 0.0], [1.0, -1.0, 3.0]),
+                ([0.0, 0.5 * PI], [3.0, 2.0, 4.0]),
+                ([0.0, -0.5 * PI], [3.0, 2.0, 2.0]),
+                ([0.5 * PI, 0.5 * PI], [1.0, 4.0, 4.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(torus.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate({a:?}) = {:?} != {b:?}",
+                        torus.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(torus.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        torus.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_torus_y_up() {
+            let torus = super::Torus {
+                json: &kcad_json::surface::Torus {
+                    axes: Some(Axes3d {
+                        x: [1.0, 0.0, 0.0],
+                        y: [0.0, 0.0, -1.0],
+                    }),
+                    origin: None,
+                    major_radius: 2.0,
+                    minor_radius: 1.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [3.0, 0.0, 0.0]),
+                ([0.5 * PI, 0.0], [0.0, 0.0, -3.0]),
+                ([PI, 0.0], [-3.0, 0.0, 0.0]),
+                ([-0.5 * PI, 0.0], [0.0, 0.0, 3.0]),
+                ([0.0, 0.5 * PI], [2.0, 1.0, 0.0]),
+                ([0.0, -0.5 * PI], [2.0, -1.0, 0.0]),
+                ([0.5 * PI, 0.5 * PI], [0.0, 1.0, -2.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(torus.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate({a:?}) = {:?} != {b:?}",
+                        torus.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(torus.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        torus.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_torus_y_up_and_offset() {
+            let torus = super::Torus {
+                json: &kcad_json::surface::Torus {
+                    axes: Some(Axes3d {
+                        x: [1.0, 0.0, 0.0],
+                        y: [0.0, 0.0, -1.0],
+                    }),
+                    origin: Some([1.0, 2.0, 3.0]),
+                    major_radius: 2.0,
+                    minor_radius: 1.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [4.0, 2.0, 3.0]),
+                ([0.5 * PI, 0.0], [1.0, 2.0, 0.0]),
+                ([PI, 0.0], [-2.0, 2.0, 3.0]),
+                ([-0.5 * PI, 0.0], [1.0, 2.0, 6.0]),
+                ([0.0, 0.5 * PI], [3.0, 3.0, 3.0]),
+                ([0.0, -0.5 * PI], [3.0, 1.0, 3.0]),
+                ([0.5 * PI, 0.5 * PI], [1.0, 3.0, 1.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(torus.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate({a:?}) = {:?} != {b:?}",
+                        torus.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(torus.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: torus.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        torus.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
         fn evaluate_cylinder_basic() {
             let cylinder = super::Cylinder {
                 json: &kcad_json::surface::Cylinder {
@@ -2439,6 +2557,117 @@ pub mod surface {
                 ([-0.5 * PI, 0.0], [0.0, -2.0, 0.0]),
                 ([0.0, 12.0], [2.0, 0.0, 12.0]),
                 ([0.0, -12.0], [2.0, 0.0, -12.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(cylinder.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate({a:?}) = {:?} != {b:?}",
+                        cylinder.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(cylinder.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        cylinder.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_cylinder_offset() {
+            let cylinder = super::Cylinder {
+                json: &kcad_json::surface::Cylinder {
+                    axes: None,
+                    origin: Some([1.0, 2.0, 3.0]),
+                    radius: 2.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [3.0, 2.0, 3.0]),
+                ([0.5 * PI, 0.0], [1.0, 4.0, 3.0]),
+                ([PI, 12.0], [-1.0, 2.0, 15.0]),
+                ([-0.5 * PI, 0.0], [1.0, 0.0, 3.0]),
+                ([0.0, 12.0], [3.0, 2.0, 15.0]),
+                ([0.0, -12.0], [3.0, 2.0, -9.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(cylinder.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate({a:?}) = {:?} != {b:?}",
+                        cylinder.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(cylinder.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        cylinder.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_cylinder_y_up() {
+            let cylinder = super::Cylinder {
+                json: &kcad_json::surface::Cylinder {
+                    axes: Some(Axes3d {
+                        x: [1.0, 0.0, 0.0],
+                        y: [0.0, 0.0, -1.0],
+                    }),
+                    origin: None,
+                    radius: 2.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [2.0, 0.0, 0.0]),
+                ([0.5 * PI, 0.0], [0.0, 0.0, -2.0]),
+                ([PI, 12.0], [-2.0, 12.0, 0.0]),
+                ([-0.5 * PI, 0.0], [0.0, 0.0, 2.0]),
+                ([0.0, 12.0], [2.0, 12.0, 0.0]),
+                ([0.0, -12.0], [2.0, -12.0, 0.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(cylinder.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate({a:?}) = {:?} != {b:?}",
+                        cylinder.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(cylinder.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: cylinder.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        cylinder.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_cylinder_y_up_and_offset() {
+            let cylinder = super::Cylinder {
+                json: &kcad_json::surface::Cylinder {
+                    axes: Some(Axes3d {
+                        x: [1.0, 0.0, 0.0],
+                        y: [0.0, 0.0, -1.0],
+                    }),
+                    origin: Some([1.0, 2.0, 3.0]),
+                    radius: 2.0,
+                },
+            };
+
+            let test_points = [
+                ([0.0, 0.0], [3.0, 2.0, 3.0]),
+                ([0.5 * PI, 0.0], [1.0, 2.0, 1.0]),
+                ([PI, 12.0], [-1.0, 14.0, 3.0]),
+                ([-0.5 * PI, 0.0], [1.0, 2.0, 5.0]),
+                ([0.0, 12.0], [3.0, 14.0, 3.0]),
+                ([0.0, -12.0], [3.0, -10.0, 3.0]),
             ];
 
             for (i, (a, b)) in test_points.iter().copied().enumerate() {
