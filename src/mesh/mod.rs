@@ -189,6 +189,16 @@ impl<'a> Mesh<'a> {
         self.json.weights.as_deref()
     }
 
+    /// Returns the mesh unit if it exists.
+    #[cfg(feature = "KITTYCAD_mesh_unit")]
+    pub fn unit(&self) -> Option<f32> {
+        self.json
+            .extensions
+            .as_ref()
+            .and_then(|ext| ext.kittycad_mesh_unit.as_ref())
+            .map(|ext| ext.unit)
+    }
+
     /// Returns the mesh UUID if it exists.
     #[cfg(feature = "KITTYCAD_uuid")]
     pub fn uuid(&self) -> Option<&str> {

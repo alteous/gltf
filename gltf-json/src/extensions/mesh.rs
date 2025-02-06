@@ -18,6 +18,11 @@ pub struct Mesh {
     )]
     pub kittycad_uuid: Option<crate::extensions::kittycad_uuid::Uuid>,
 
+    /// Vertex unit scale.
+    #[cfg(feature = "KITTYCAD_mesh_unit")]
+    #[serde(rename = "KITTYCAD_mesh_unit", skip_serializing_if = "Option::is_none")]
+    pub kittycad_mesh_unit: Option<KittyCadMeshUnit>,
+
     #[cfg(feature = "extensions")]
     #[serde(default, flatten)]
     pub others: Map<String, Value>,
@@ -49,4 +54,11 @@ pub struct KhrMaterialsVariants {
 pub struct Mapping {
     pub material: u32,
     pub variants: Vec<u32>,
+}
+
+#[cfg(feature = "KITTYCAD_mesh_unit")]
+#[derive(Clone, Debug, Deserialize, Serialize, Validate)]
+pub struct KittyCadMeshUnit {
+    /// Unit scale to be applied to map mesh vertices to meters.
+    pub unit: f32,
 }
