@@ -848,6 +848,11 @@ pub struct Trace {
         skip_serializing_if = "trace_relation_is_default"
     )]
     pub relation: Relation,
+
+    /// Optional name for this surface.
+    #[cfg(feature = "names")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 fn trace_relation_default() -> Relation {
@@ -878,6 +883,11 @@ pub struct Edge {
 
     /// Interval for the curve's 't' parameter.
     pub t: Interval,
+
+    /// Optional name for this surface.
+    #[cfg(feature = "names")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 /// Edge loop.
@@ -891,6 +901,11 @@ pub struct Loop {
     /// Optional 1:1 pairing of traces to edges.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub traces: Vec<Trace>,
+
+    /// Optional name for this surface.
+    #[cfg(feature = "names")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 impl Validate for Loop {
@@ -932,6 +947,11 @@ pub struct Face {
     /// Face bounds.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub loops: Vec<IndexWithOrientation<Loop>>,
+
+    /// Optional name for this surface.
+    #[cfg(feature = "names")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 /// Boundary representation volume.

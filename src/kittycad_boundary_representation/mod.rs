@@ -2815,6 +2815,12 @@ impl<'a> Loop<'a> {
         self.index
     }
 
+    /// Optional user-defined name for this object.
+    #[cfg(feature = "names")]
+    pub fn name(&self) -> Option<&'a str> {
+        self.json.name.as_deref()
+    }
+
     /// Returns an iterator that visits the 3D edges of the loop.
     pub fn edges(&self) -> impl ExactSizeIterator<Item = Option<(Edge, Orientation)>> {
         self.json.edges.iter().map(|opt| {
@@ -2858,6 +2864,12 @@ impl<'a> Face<'a> {
     /// Returns the internal JSON index.
     pub fn index(&self) -> usize {
         self.index
+    }
+
+    /// Optional user-defined name for this object.
+    #[cfg(feature = "names")]
+    pub fn name(&self) -> Option<&'a str> {
+        self.json.name.as_deref()
     }
 
     /// Returns the face bounds.
@@ -2959,6 +2971,12 @@ impl<'a> Edge<'a> {
         self.index
     }
 
+    /// Optional user-defined name for this object.
+    #[cfg(feature = "names")]
+    pub fn name(&self) -> Option<&'a str> {
+        self.json.name.as_deref()
+    }
+
     /// Returns the edge curve geometry in 3D (or homogeneous 4D) space.
     pub fn curve(&self) -> (Curve3d<'a>, Orientation) {
         let kcad::IndexWithOrientation(index, orientation) = self.json.curve;
@@ -3010,6 +3028,12 @@ impl<'a> Trace<'a> {
     /// Constructs a `Trace`.
     pub(crate) fn new(document: &'a Document, json: &'a kcad::Trace) -> Self {
         Self { document, json }
+    }
+
+    /// Optional user-defined name for this object.
+    #[cfg(feature = "names")]
+    pub fn name(&self) -> Option<&'a str> {
+        self.json.name.as_deref()
     }
 
     /// Returns the edge curve geometry in 3D (or homogeneous 4D) space.
