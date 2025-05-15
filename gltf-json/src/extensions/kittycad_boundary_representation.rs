@@ -1,7 +1,7 @@
 //! Boundary representations of solid objects
 
 use crate::validation::{Error, Validate};
-use crate::{Index, Root};
+use crate::{Extras, Index, Root};
 use gltf_derive::Validate;
 use schemars::gen::SchemaGenerator;
 use schemars::schema::Schema;
@@ -24,7 +24,7 @@ pub use surface::Surface;
 pub mod curve {
     use super::{Axes2d, Axes3d};
     use crate::validation::{Error, Validate};
-    use crate::Root;
+    use crate::{Extras, Root};
     use gltf_derive::Validate;
     use schemars::JsonSchema;
     use serde_derive::{Deserialize, Serialize};
@@ -65,6 +65,12 @@ pub mod curve {
 
         /// Distance from the center position to all points on the circle.
         pub radius: f64,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// Circular curve definition.
@@ -88,6 +94,12 @@ pub mod curve {
 
         /// Distance from the center position to all points on the circle.
         pub radius: f64,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// Line curve definition.
@@ -105,6 +117,12 @@ pub mod curve {
 
         /// Unit vector pointing away from the origin position.
         pub direction: [f64; 2],
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// Line curve definition.
@@ -122,6 +140,12 @@ pub mod curve {
 
         /// Unit vector pointing away from the origin position.
         pub direction: [f64; 3],
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// Non-uniform rational basis spline curve definition.
@@ -144,6 +168,12 @@ pub mod curve {
         /// May be omitted for non-rational B-splines.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub weights: Vec<f64>,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     impl Validate for Nurbs2d {
@@ -178,6 +208,12 @@ pub mod curve {
         /// May be omitted for non-rational B-splines.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub weights: Vec<f64>,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     impl Validate for Nurbs3d {
@@ -285,6 +321,12 @@ pub mod curve {
         /// Specific curve data.
         #[serde(flatten)]
         pub geometry: Geometry2d,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// Abstract curve data.
@@ -304,6 +346,12 @@ pub mod curve {
         /// Specific curve data.
         #[serde(flatten)]
         pub geometry: Geometry3d,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 }
 
@@ -311,7 +359,7 @@ pub mod curve {
 pub mod surface {
     use super::Axes3d;
     use crate::validation::{Error, Validate};
-    use crate::Root;
+    use crate::{Extras, Root};
     use gltf_derive::Validate;
     use schemars::JsonSchema;
     use serde_derive::{Deserialize, Serialize};
@@ -362,6 +410,12 @@ pub mod surface {
 
         /// Distance from the center position to all points on the circle.
         pub radius: f64,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// NURBS surface definition.
@@ -385,6 +439,11 @@ pub mod surface {
         pub weights: Vec<f64>,
         /// Order of basis splines.
         pub order: [u32; 2],
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     impl Validate for Nurbs {
@@ -426,6 +485,12 @@ pub mod surface {
         /// An arbitrary point that lies on the plane.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub origin: Option<[f64; 3]>,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// Parametric spherical surface definition.
@@ -452,6 +517,12 @@ pub mod surface {
 
         /// Distance from the center position to all points on the circle.
         pub radius: f64,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     /// Toroidal surface definition.
@@ -487,6 +558,12 @@ pub mod surface {
 
         /// Distance of points away from the center of the revolved circle.
         pub minor_radius: f64,
+
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 
     fn is_zero(x: &f64) -> bool {
@@ -589,6 +666,11 @@ pub mod surface {
         /// Specific surface data.
         #[serde(flatten)]
         pub geometry: Geometry,
+        /// Optional application specific data.
+        #[serde(default)]
+        #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+        #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+        pub extras: Extras,
     }
 }
 
@@ -892,6 +974,12 @@ pub struct Trace {
     #[cfg(feature = "names")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+
+    /// Optional application specific data.
+    #[serde(default)]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+    pub extras: Extras,
 }
 
 fn trace_relation_default() -> Relation {
@@ -927,6 +1015,12 @@ pub struct Edge {
     #[cfg(feature = "names")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+
+    /// Optional application specific data.
+    #[serde(default)]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+    pub extras: Extras,
 }
 
 /// Edge loop.
@@ -945,6 +1039,12 @@ pub struct Loop {
     #[cfg(feature = "names")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+
+    /// Optional application specific data.
+    #[serde(default)]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+    pub extras: Extras,
 }
 
 impl Validate for Loop {
@@ -991,6 +1091,12 @@ pub struct Face {
     #[cfg(feature = "names")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+
+    /// Optional application specific data.
+    #[serde(default)]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+    pub extras: Extras,
 }
 
 /// Boundary representation volume.
@@ -1005,6 +1111,12 @@ pub struct Shell {
     #[cfg(feature = "names")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+
+    /// Optional application specific data.
+    #[serde(default)]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+    pub extras: Extras,
 }
 
 /// Solid boundary representation structure.
@@ -1023,4 +1135,10 @@ pub struct Solid {
     /// Optional mesh approximation of this solid.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mesh: Option<Index<crate::Mesh>>,
+
+    /// Optional application specific data.
+    #[serde(default)]
+    #[cfg_attr(feature = "extras", serde(skip_serializing_if = "Extras::is_empty"))]
+    #[cfg_attr(not(feature = "extras"), serde(skip_serializing))]
+    pub extras: Extras,
 }

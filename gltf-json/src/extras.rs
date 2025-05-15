@@ -17,6 +17,22 @@ pub struct Void {
     _allow_unknown_fields: (),
 }
 
+#[cfg(not(feature = "extras"))]
+impl schemars::JsonSchema for Void {
+    fn schema_name() -> String {
+        "extras".to_owned()
+    }
+
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        #[derive(Deserialize, schemars::JsonSchema, Serialize)]
+        #[schemars(rename = "extras")]
+        struct ExtrasSchema(
+            #[serde(default)] std::collections::BTreeMap<String, serde_json::Value>,
+        );
+        ExtrasSchema::json_schema(generator)
+    }
+}
+
 impl fmt::Debug for Void {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{{}}")
