@@ -785,6 +785,11 @@ pub mod curve {
             let (sine, cosine) = t.sin_cos();
             (origin + (xaxis * cosine + yaxis * sine) * radius).into()
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     /// Circle in 3D space.
@@ -839,6 +844,11 @@ pub mod curve {
             let (sine, cosine) = t.sin_cos();
             (origin + (xaxis * cosine + yaxis * sine) * radius).into()
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     /// Defines a line curve.
@@ -866,6 +876,11 @@ pub mod curve {
         /// If `end` was set, this will be computed.
         pub fn direction(&self) -> [f64; 2] {
             self.json.direction
+        }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
         }
     }
 
@@ -895,6 +910,11 @@ pub mod curve {
         pub fn direction(&self) -> [f64; 3] {
             self.json.direction
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     /// Defines a non-uniform rational B-spline (NURBS) curve.
@@ -919,6 +939,7 @@ pub mod curve {
                     weights: self.json.weights.clone(),
                     knot_vector: self.json.knot_vector.clone(),
                     order: self.json.order,
+                    extras: Default::default(),
                 },
             };
             let [x, y, _] = nurbs_3d.evaluate(t);
@@ -958,6 +979,11 @@ pub mod curve {
         /// Greatest order of the basis splines.
         pub fn order(&self) -> u32 {
             self.json.order
+        }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
         }
     }
 
@@ -1341,6 +1367,11 @@ pub mod curve {
         pub fn order(&self) -> u32 {
             self.json.order
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     /// Curve kind.
@@ -1397,6 +1428,11 @@ pub mod curve {
                 kcad::curve::Geometry2d::Line(ref json) => Geometry2d::Line(Line2d { json }),
                 kcad::curve::Geometry2d::Nurbs(ref json) => Geometry2d::Nurbs(Nurbs2d { json }),
             }
+        }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
         }
     }
 
@@ -1455,6 +1491,11 @@ pub mod curve {
                 kcad::curve::Geometry3d::Nurbs(ref json) => Geometry3d::Nurbs(Nurbs3d { json }),
             }
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     #[cfg(test)]
@@ -1487,6 +1528,7 @@ pub mod curve {
                 weights: vec![1.0, FRAC_1_SQRT_2, 1.0],
                 knot_vector: vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
                 order: 3,
+                extras: Default::default(),
             };
             let curve = super::Nurbs3d { json: &inner };
 
@@ -1531,6 +1573,7 @@ pub mod curve {
                 weights: vec![1.0, 1.0 / 3.0, 1.0 / 3.0, 1.0],
                 knot_vector: vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0],
                 order: 4,
+                extras: Default::default(),
             };
             let curve = super::Nurbs3d { json: &inner };
 
@@ -1559,6 +1602,7 @@ pub mod curve {
                 weights: vec![],
                 knot_vector: vec![0.0, 0.0, 1.0, 1.0],
                 order: 2,
+                extras: Default::default(),
             };
             let curve = super::Nurbs3d { json: &inner };
 
@@ -1588,6 +1632,7 @@ pub mod curve {
                 weights: vec![],
                 knot_vector: vec![0.0, 0.0, 0.5, 1.0, 1.0],
                 order: 2,
+                extras: Default::default(),
             };
             let curve = super::Nurbs3d { json: &inner };
 
@@ -1617,6 +1662,7 @@ pub mod curve {
                 weights: vec![1.0, 3.0, 1.0],
                 knot_vector: vec![0.0, 0.0, 0.5, 1.0, 1.0],
                 order: 2,
+                extras: Default::default(),
             };
             let curve = super::Nurbs3d { json: &inner };
 
@@ -1646,6 +1692,7 @@ pub mod curve {
                 weights: vec![1.0, 3.0, 1.0],
                 knot_vector: vec![0.0, 0.0, 0.5, 1.0, 1.0],
                 order: 2,
+                extras: Default::default(),
             };
             let curve = super::Nurbs3d { json: &inner };
 
@@ -1675,6 +1722,7 @@ pub mod curve {
                     axes: None,
                     origin: None,
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -1702,6 +1750,7 @@ pub mod curve {
                     axes: None,
                     origin: Some([1.2, 3.4, 5.6]),
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -1807,6 +1856,11 @@ pub mod surface {
             let v = dz;
             [u, v]
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     /// Defines a planar surface.
@@ -1857,6 +1911,11 @@ pub mod surface {
             let xaxis = DVec3::from(self.xaxis());
             let yaxis = DVec3::from(self.yaxis());
             [offset.dot(xaxis), offset.dot(yaxis)]
+        }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
         }
     }
 
@@ -1922,6 +1981,11 @@ pub mod surface {
             let u = ab.dot(yaxis).atan2(ab.dot(xaxis));
             let v = (ab.dot(zaxis) / radius).asin();
             [u, v]
+        }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
         }
     }
 
@@ -1999,6 +2063,11 @@ pub mod surface {
             let u = dy.atan2(dx);
             let v = (dz / minor_radius).asin();
             [u, v]
+        }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
         }
     }
 
@@ -2127,6 +2196,11 @@ pub mod surface {
                 (qw / w).into()
             }
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     /// Parametric conical surface definition.
@@ -2167,6 +2241,11 @@ pub mod surface {
         /// Angle between the normal of the base plane and the side of the cone.
         pub fn semi_angle(&self) -> f64 {
             self.json.semi_angle
+        }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
         }
 
         /// Evaluate the surface at parameters `[u, v]`.
@@ -2277,6 +2356,11 @@ pub mod surface {
                 kcad::surface::Geometry::Cone(ref json) => Geometry::Cone(Cone { json }),
             }
         }
+
+        /// Optional application specific data.
+        pub fn extras(&self) -> &'a json::Extras {
+            &self.json.extras
+        }
     }
 
     #[cfg(test)]
@@ -2313,6 +2397,7 @@ pub mod surface {
                 knot_vector: vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 10.0, 10.0],
                 order: [4, 2],
                 weights: Default::default(),
+                extras: Default::default(),
             };
             let nurbs = super::Nurbs { json: &inner };
 
@@ -2363,6 +2448,7 @@ pub mod surface {
                         y: [0.0, 0.0, -1.0],
                     }),
                     origin: Some([1.2, 3.4, 5.6]),
+                    extras: Default::default(),
                 },
             };
 
@@ -2398,6 +2484,7 @@ pub mod surface {
                     axes: None,
                     origin: None,
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2434,6 +2521,7 @@ pub mod surface {
                     axes: None,
                     origin: Some(offset),
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2470,6 +2558,7 @@ pub mod surface {
                     origin: None,
                     major_radius: 2.0,
                     minor_radius: 1.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2507,6 +2596,7 @@ pub mod surface {
                     origin: Some([1.0, 2.0, 3.0]),
                     major_radius: 2.0,
                     minor_radius: 1.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2547,6 +2637,7 @@ pub mod surface {
                     origin: None,
                     major_radius: 2.0,
                     minor_radius: 1.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2587,6 +2678,7 @@ pub mod surface {
                     origin: Some([1.0, 2.0, 3.0]),
                     major_radius: 2.0,
                     minor_radius: 1.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2623,6 +2715,7 @@ pub mod surface {
                     axes: None,
                     origin: None,
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2658,6 +2751,7 @@ pub mod surface {
                     axes: None,
                     origin: Some([1.0, 2.0, 3.0]),
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2696,6 +2790,7 @@ pub mod surface {
                     }),
                     origin: None,
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2734,6 +2829,7 @@ pub mod surface {
                     }),
                     origin: Some([1.0, 2.0, 3.0]),
                     radius: 2.0,
+                    extras: Default::default(),
                 },
             };
 
@@ -2770,6 +2866,7 @@ pub mod surface {
                     origin: None,
                     radius: 0.0,
                     semi_angle: std::f64::consts::FRAC_PI_6,
+                    extras: Default::default(),
                 },
             };
 
@@ -2804,6 +2901,7 @@ pub mod surface {
                     origin: None,
                     radius: 1.0,
                     semi_angle: std::f64::consts::FRAC_PI_6,
+                    extras: Default::default(),
                 },
             };
 
@@ -2883,6 +2981,11 @@ impl<'a> Solid<'a> {
             .mesh
             .map(|index| self.document.meshes().nth(index.value()).unwrap())
     }
+
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
+    }
 }
 
 /// Closed boundary representation volume.
@@ -2928,6 +3031,11 @@ impl<'a> Shell<'a> {
                 let face = self.document.faces().unwrap().nth(index.value()).unwrap();
                 (face, *orientation)
             })
+    }
+
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
     }
 }
 
@@ -2979,6 +3087,11 @@ impl<'a> Loop<'a> {
     /// Returns an iterator that visits the corresponding 2D traces of the loop.
     pub fn traces(&self) -> iter::Traces {
         iter::Traces(self.document, self.json.traces.iter())
+    }
+
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
     }
 }
 
@@ -3036,6 +3149,11 @@ impl<'a> Face<'a> {
             .nth(self.json.surface.index().value())
             .unwrap();
         (surface, self.json.surface.orientation())
+    }
+
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
     }
 }
 
@@ -3156,6 +3274,11 @@ impl<'a> Edge<'a> {
     pub fn t(&self) -> Interval {
         self.json.t.clone()
     }
+
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
+    }
 }
 
 /// A 2D curve across a surface.
@@ -3200,5 +3323,10 @@ impl<'a> Trace<'a> {
     /// Returns the relationship of the associated edge.
     pub fn relation(&self) -> kcad::Relation {
         self.json.relation
+    }
+
+    /// Optional application specific data.
+    pub fn extras(&self) -> &'a json::Extras {
+        &self.json.extras
     }
 }
