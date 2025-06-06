@@ -2129,6 +2129,78 @@ pub mod surface {
         }
     }
 
+    /// Parametric conical surface definition.
+    #[derive(Clone, Debug)]
+    pub struct Cone<'a> {
+        /// The corresponding JSON struct.
+        pub(crate) json: &'a kcad::surface::Cone,
+    }
+
+    impl<'a> Cone<'a> {
+        /// Local 'x' axis.
+        pub fn xaxis(&self) -> [f64; 3] {
+            self.json.axes.clone().unwrap_or_default().x
+        }
+
+        /// Local 'y' axis.
+        pub fn yaxis(&self) -> [f64; 3] {
+            self.json.axes.clone().unwrap_or_default().y
+        }
+
+        /// Local 'z' axis.
+        pub fn zaxis(&self) -> [f64; 3] {
+            DVec3::from(self.xaxis())
+                .cross(DVec3::from(self.yaxis()))
+                .into()
+        }
+
+        /// Origin (center) of the cone.
+        pub fn origin(&self) -> [f64; 3] {
+            self.json.origin.unwrap_or_default()
+        }
+
+        /// Radius of the base circle.
+        pub fn radius(&self) -> f64 {
+            self.json.radius
+        }
+
+        /// Angle between the normal of the base plane and the side of the cone.
+        pub fn semi_angle(&self) -> f64 {
+            self.json.semi_angle
+        }
+
+        /// Evaluate the surface at parameters `[u, v]`.
+        pub fn evaluate(&self, [u, v]: [f64; 2]) -> [f64; 3] {
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            let zaxis = DVec3::from(self.zaxis());
+            let radius = self.radius();
+            let slope = self.semi_angle().tan();
+            let (sin_u, cos_u) = u.sin_cos();
+            let point = origin + v * zaxis + (radius + v * slope) * (xaxis * cos_u + yaxis * sin_u);
+            point.into()
+        }
+
+        /// Find (u, v) for a point (x, y, z) on the cone.
+        ///
+        /// The result is unspecified if (x, y, z) does not lie on the cone
+        /// within a reasonable tolerance.
+        pub fn evaluate_inverse(&self, point: [f64; 3]) -> [f64; 2] {
+            let origin = DVec3::from(self.origin());
+            let xaxis = DVec3::from(self.xaxis());
+            let yaxis = DVec3::from(self.yaxis());
+            let zaxis = DVec3::from(self.zaxis());
+            let mut displacement = DVec3::from(point) - origin;
+            let v = displacement.dot(zaxis);
+            displacement += zaxis * v;
+            let dx = displacement.dot(xaxis);
+            let dy = displacement.dot(yaxis);
+            let u = dy.atan2(dx);
+            [u, v]
+        }
+    }
+
     /// Specific surface geometry.
     #[derive(Clone, Debug)]
     pub enum Geometry<'a> {
@@ -2142,6 +2214,8 @@ pub mod surface {
         Sphere(Sphere<'a>),
         /// Toroidal surface.
         Torus(Torus<'a>),
+        /// Conical surface.
+        Cone(Cone<'a>),
     }
 
     impl<'a> Geometry<'a> {
@@ -2153,6 +2227,7 @@ pub mod surface {
                 Geometry::Plane(plane) => plane.evaluate(uv),
                 Geometry::Sphere(sphere) => sphere.evaluate(uv),
                 Geometry::Torus(torus) => torus.evaluate(uv),
+                Geometry::Cone(cone) => cone.evaluate(uv),
             }
         }
     }
@@ -2199,6 +2274,7 @@ pub mod surface {
                 kcad::surface::Geometry::Plane(ref json) => Geometry::Plane(Plane { json }),
                 kcad::surface::Geometry::Sphere(ref json) => Geometry::Sphere(Sphere { json }),
                 kcad::surface::Geometry::Torus(ref json) => Geometry::Torus(Torus { json }),
+                kcad::surface::Geometry::Cone(ref json) => Geometry::Cone(Cone { json }),
             }
         }
     }
@@ -2681,6 +2757,74 @@ pub mod surface {
                     panic!(
                         "test_points[{i}]: cylinder.evaluate_inverse({b:?}) = {:?} != {a:?}",
                         cylinder.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_cone_from_apex() {
+            let cone = super::Cone {
+                json: &kcad_json::surface::Cone {
+                    axes: None,
+                    origin: None,
+                    radius: 0.0,
+                    semi_angle: std::f64::consts::FRAC_PI_6,
+                },
+            };
+
+            let frac_1_sqrt_3 = 3.0f64.sqrt().recip();
+            let test_points = [
+                ([0.0, 0.0], [0.0, 0.0, 0.0]),
+                ([0.0, 1.0], [frac_1_sqrt_3, 0.0, 1.0]),
+                ([PI, 1.0], [-frac_1_sqrt_3, 0.0, 1.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(cone.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: cone.evaluate({a:?}) = {:?} != {b:?}",
+                        cone.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(cone.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: cone.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        cone.evaluate_inverse(b)
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn evaluate_cone_from_base() {
+            let cone = super::Cone {
+                json: &kcad_json::surface::Cone {
+                    axes: None,
+                    origin: None,
+                    radius: 1.0,
+                    semi_angle: std::f64::consts::FRAC_PI_6,
+                },
+            };
+
+            let frac_1_sqrt_3 = 3.0f64.sqrt().recip();
+            let test_points = [
+                ([0.0, 0.0], [1.0, 0.0, 0.0]),
+                ([0.0, 1.0], [1.0 + frac_1_sqrt_3, 0.0, 1.0]),
+                ([PI, 1.0], [-1.0 - frac_1_sqrt_3, 0.0, 1.0]),
+            ];
+
+            for (i, (a, b)) in test_points.iter().copied().enumerate() {
+                if !all_relative_eq!(cone.evaluate(a), b) {
+                    panic!(
+                        "test_points[{i}]: cone.evaluate({a:?}) = {:?} != {b:?}",
+                        cone.evaluate(a)
+                    );
+                }
+                if !all_relative_eq!(cone.evaluate_inverse(b), a) {
+                    panic!(
+                        "test_points[{i}]: cone.evaluate_inverse({b:?}) = {:?} != {a:?}",
+                        cone.evaluate_inverse(b)
                     );
                 }
             }

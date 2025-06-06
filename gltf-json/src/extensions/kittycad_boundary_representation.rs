@@ -331,6 +331,8 @@ pub mod surface {
         Sphere,
         /// Torus surface.
         Torus,
+        /// Conical surface.
+        Cone,
     }
 
     crate::impl_validate_nop!(Type);
@@ -487,6 +489,39 @@ pub mod surface {
         pub minor_radius: f64,
     }
 
+    fn is_zero(x: &f64) -> bool {
+        *x == 0.0
+    }
+
+    /// Conical surface definition.
+    ///
+    /// σ(u, v) := O + vz + (R + tan(A)v)(cos(u)x + sin(u)y), where:
+    /// * O = `self.origin`,
+    /// * R = `self.radius`,
+    /// * A = `self.semi_angle`,
+    /// * x = `self.axes.x`,
+    /// * y = `self.axes.y`,
+    /// * z = `self.axes.x` × `self.axes.y`.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, Validate)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(rename = "surface.cone")]
+    pub struct Cone {
+        /// Local co-ordinate axes.
+        #[serde(default, flatten, skip_serializing_if = "Option::is_none")]
+        pub axes: Option<Axes3d>,
+
+        /// Position at the center of the circle.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub origin: Option<[f64; 3]>,
+
+        /// Distance from the center position to all points on the base circle.
+        #[serde(default, skip_serializing_if = "is_zero")]
+        pub radius: f64,
+
+        /// Angle between the normal vector and the side of the cone in radians.
+        pub semi_angle: f64,
+    }
+
     /// Specific surface data.
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -502,6 +537,8 @@ pub mod surface {
         Sphere(Sphere),
         /// Toroidal surface.
         Torus(Torus),
+        /// Conical surface.
+        Cone(Cone),
     }
 
     impl Geometry {
@@ -513,6 +550,7 @@ pub mod surface {
                 Self::Plane(_) => Type::Plane,
                 Self::Sphere(_) => Type::Sphere,
                 Self::Torus(_) => Type::Torus,
+                Self::Cone(_) => Type::Cone,
             }
         }
     }
@@ -531,6 +569,7 @@ pub mod surface {
                 Self::Plane(plane) => plane.validate(root, || path().field("plane"), report),
                 Self::Sphere(sphere) => sphere.validate(root, || path().field("sphere"), report),
                 Self::Torus(torus) => torus.validate(root, || path().field("torus"), report),
+                Self::Cone(cone) => cone.validate(root, || path().field("cone"), report),
             }
         }
     }
